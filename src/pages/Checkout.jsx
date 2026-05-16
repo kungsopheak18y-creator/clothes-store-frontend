@@ -53,7 +53,7 @@ export default function Checkout() {
 
   useEffect(() => { fetchAddresses(); }, []);
 
-  // ✅ Polling — starts when order + qrString ready and status is waiting
+  // Polling
   useEffect(() => {
     if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
 
@@ -73,7 +73,7 @@ export default function Checkout() {
       }
 
       try {
-        const res = await api.get('/api/payment/status/' + order.id);
+        const res = await api.get('/payment/status/' + order.id);
         const status = res.data.paymentStatus;
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
@@ -94,15 +94,13 @@ export default function Checkout() {
       }
     }, 3000);
 
-    return () => {
-      clearInterval(intervalRef.current);
-    };
+    return () => clearInterval(intervalRef.current);
   }, [order?.id, qrString, paymentStatus]);
 
   const fetchAddresses = async () => {
     setLoadingAddresses(true);
     try {
-      const res = await api.get('/api/addresses');
+      const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
       const defaultAddr = data.find(a => a.isDefault);
@@ -118,9 +116,9 @@ export default function Checkout() {
   const saveAddress = async () => {
     try {
       if (editingAddress) {
-        await api.put('/api/addresses/' + editingAddress.id, addressForm);
+        await api.put('/addresses/' + editingAddress.id, addressForm);
       } else {
-        await api.post('/api/addresses', addressForm);
+        await api.post('/addresses', addressForm);
       }
       setShowAddressForm(false);
       fetchAddresses();
@@ -133,20 +131,20 @@ export default function Checkout() {
   const deleteAddress = async (id) => {
     if (addresses.length === 1) { toast.error('You need at least one address'); return; }
     if (confirm('Delete this address?')) {
-      await api.delete('/api/addresses/' + id);
+      await api.delete('/addresses/' + id);
       fetchAddresses();
     }
   };
 
   const setDefaultAddress = async (id) => {
-    await api.patch('/api/addresses/' + id + '/default');
+    await api.patch('/addresses/' + id + '/default');
     fetchAddresses();
   };
 
   const handleCancelPayment = async () => {
     try {
       clearInterval(intervalRef.current);
-      await api.delete('/api/payment/cancel/' + order.id);
+      await api.delete('/payment/cancel/' + order.id);
       toast.success('Order cancelled');
       navigate('/shop');
     } catch (err) {
@@ -157,7 +155,7 @@ export default function Checkout() {
   const handleManualCheck = async () => {
     setManualChecking(true);
     try {
-      const res = await api.get('/api/payment/status/' + order.id);
+      const res = await api.get('/payment/status/' + order.id);
       const status = res.data.paymentStatus;
       console.log('Manual check status:', status);
 
@@ -187,7 +185,7 @@ export default function Checkout() {
     try {
       clearInterval(intervalRef.current);
       setPaymentStatus('idle');
-      const paymentRes = await api.post('/api/payment/initiate/' + order.id);
+      const paymentRes = await api.post('/payment/initiate/' + order.id);
       setQrString(paymentRes.data.qrString);
       setQrExpiresAt(paymentRes.data.expiresAt);
       setPaymentStatus('waiting');
@@ -218,7 +216,7 @@ export default function Checkout() {
         notes: `Contact via ${contactMethod}`,
       };
 
-      const orderRes = await api.post('/api/orders', orderPayload);
+      const orderRes = await api.post('/orders', orderPayload);
       const newOrder = orderRes.data.order;
       setOrder(newOrder);
 
@@ -229,7 +227,7 @@ export default function Checkout() {
         setTimeout(() => navigate('/orders'), 2000);
 
       } else if (paymentMethod === 'khqr') {
-        const paymentRes = await api.post('/api/payment/initiate/' + newOrder.id);
+        const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
         const qs = paymentRes.data.qrString;
         const expiresAt = paymentRes.data.expiresAt;
 
@@ -244,7 +242,7 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'card') {
         await new Promise(resolve => setTimeout(resolve, 1500));
-        await api.patch('/api/orders/' + newOrder.id + '/status', { status: 'paid' });
+        await api.patch('/orders/' + newOrder.id + '/status', { status: 'paid' });
         setOrderPlaced(true);
         clearCart();
         toast.success('Order placed! Redirecting...');
