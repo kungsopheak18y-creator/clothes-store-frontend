@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://clothes-store-backend.up.railway.app',
+  baseURL: 'https://clothes-store-backend-na6n.onrender.com',
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
