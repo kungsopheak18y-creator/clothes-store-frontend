@@ -79,9 +79,10 @@ export default function Checkout() {
         // console.log('Poll #' + attemptsRef.current + ' status:', status);
         console.log(res.data);
 
-        const status =
-          res.data.payment_status ||
-          res.data.paymentStatus;
+        const status = res.data?.payment_status;
+
+        console.log("FULL RESPONSE:", res.data);
+        console.log("PAYMENT STATUS:", status);
 
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
