@@ -8,8 +8,8 @@ import toast from 'react-hot-toast'
 export default function Wishlist() {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
-    const [removing, setRemoving] = useState(null) // ✅ track which item is being removed
-    const { remove } = useWishlistStore()
+    const [removing, setRemoving] = useState(null)
+    const { fetchIds } = useWishlistStore()
 
     useEffect(() => { fetchWishlist() }, [])
 
@@ -25,19 +25,26 @@ export default function Wishlist() {
     }
 
     const handleRemove = async (productId) => {
-        setRemoving(productId) // ✅ show loading on that item
+        setRemoving(productId)
         try {
-            const success = await remove(productId)
-            if (success) {
-                // ✅ Remove from UI only after confirmed removed from backend
-                setItems(prev => prev.filter(item => item.product_id !== productId))
-                toast.success('Removed from wishlist')
-            } else {
-                toast.error('Failed to remove. Please try again.')
+            // ✅ Call toggle directly — backend always removes if it exists
+            const res = await api.post('/wishlist/toggle', { product_id: productId })
+
+            // ✅ If backend added it back (wishlisted = true), call toggle again to remove
+            if (res.data.wishlisted === true) {
+                await api.post('/wishlist/toggle', { product_id: productId })
             }
+
+            // ✅ Always remove from UI after API call
+            setItems(prev => prev.filter(item => item.product_id !== productId))
+
+            // ✅ Refresh store IDs so heart icons update correctly
+            await fetchIds()
+
+            toast.success('Removed from wishlist')
         } catch (err) {
-            console.error(err)
-            toast.error('Failed to remove from wishlist')
+            console.error('Remove error:', err)
+            toast.error('Failed to remove. Please try again.')
         } finally {
             setRemoving(null)
         }
@@ -109,7 +116,7 @@ export default function Wishlist() {
                         return (
                             <div
                                 key={item.id}
-                                className={`group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition ${isRemoving ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition ${isRemoving ? 'opacity-40 pointer-events-none' : ''}`}
                             >
                                 {/* Remove button */}
                                 <button
@@ -118,7 +125,6 @@ export default function Wishlist() {
                                     className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition disabled:opacity-50"
                                 >
                                     {isRemoving ? (
-                                        // ✅ Loading spinner while removing
                                         <div className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                         <Trash2 className="w-4 h-4 text-red-400" />
@@ -148,7 +154,6 @@ export default function Wishlist() {
                                         ${parseFloat(product?.price).toFixed(2)}
                                     </p>
 
-                                    {/* View Product button */}
                                     <Link
                                         to={`/product/${product?.id}`}
                                         className="mt-3 w-full flex items-center justify-center gap-2 bg-gray-900 text-white text-xs font-medium py-2 rounded-full hover:bg-gray-700 transition"
