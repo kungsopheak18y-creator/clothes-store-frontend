@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -14,6 +14,22 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
+})
+
+const snakeToCamel = (str) => str.replace(/_([a-z])/g, (_, l) => l.toUpperCase())
+const convertKeys = (obj) => {
+  if (Array.isArray(obj)) return obj.map(convertKeys)
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [snakeToCamel(k), convertKeys(v)])
+    )
+  }
+  return obj
+}
+
+api.interceptors.response.use((response) => {
+  response.data = convertKeys(response.data)
+  return response
 })
 
 export default api
