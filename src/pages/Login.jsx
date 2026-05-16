@@ -17,8 +17,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const res = await api.post("/login", { email, password });
-      setUser(res.data.user, res.data.token);
+      const res = await api.post("/login", { identifier: email, password });
+      localStorage.setItem('token', res.data.token);
+      setUser(res.data.user);
       toast.success("Welcome back!");
       if (res.data.user.role === "admin") {
         navigate("/admin");
