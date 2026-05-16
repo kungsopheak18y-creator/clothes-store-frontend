@@ -27,20 +27,18 @@ export default function Wishlist() {
     const handleRemove = async (productId) => {
         setRemoving(productId)
         try {
-            // ✅ Call toggle directly — backend always removes if it exists
-            const res = await api.post('/wishlist/toggle', { product_id: productId })
+            const res = await api.post('/wishlist/toggle', {
+                product_id: parseInt(productId) // ✅ force integer
+            })
 
-            // ✅ If backend added it back (wishlisted = true), call toggle again to remove
             if (res.data.wishlisted === true) {
-                await api.post('/wishlist/toggle', { product_id: productId })
+                await api.post('/wishlist/toggle', {
+                    product_id: parseInt(productId)
+                })
             }
 
-            // ✅ Always remove from UI after API call
             setItems(prev => prev.filter(item => item.product_id !== productId))
-
-            // ✅ Refresh store IDs so heart icons update correctly
             await fetchIds()
-
             toast.success('Removed from wishlist')
         } catch (err) {
             console.error('Remove error:', err)
