@@ -68,7 +68,8 @@ export default function Checkout() {
       try {
         const res = await api.get('/payment/status/' + order.id);
         console.log('Poll response:', res.data);
-        const status = res.data.paymentStatus;
+        // ✅ Fixed: Laravel returns payment_status (snake_case)
+        const status = res.data.payment_status;
         if (status === 'PAID') {
           clearInterval(poll);
           setPaymentStatus('paid');
@@ -95,7 +96,8 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      const defaultAddr = data.find(a => a.isDefault);
+      // ✅ Fixed: Laravel returns is_default (snake_case)
+      const defaultAddr = data.find(a => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
     } catch (err) {
@@ -148,7 +150,8 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      const status = res.data.paymentStatus;
+      // ✅ Fixed: Laravel returns payment_status (snake_case)
+      const status = res.data.payment_status;
       if (status === 'PAID') {
         clearInterval(intervalRef.current);
         setPaymentStatus('paid');
@@ -174,8 +177,9 @@ export default function Checkout() {
     try {
       setPaymentStatus('waiting');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      setQrString(paymentRes.data.qrString);
-      setQrExpiresAt(paymentRes.data.expiresAt);
+      // ✅ Fixed: Laravel returns qr_string and expires_at (snake_case)
+      setQrString(paymentRes.data.qr_string);
+      setQrExpiresAt(paymentRes.data.expires_at);
       toast.success('New QR generated!');
     } catch (err) {
       toast.error('Failed to refresh QR');
@@ -215,8 +219,9 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        const qs = paymentRes.data.qrString;
-        const expiresAt = paymentRes.data.expiresAt;
+        // ✅ Fixed: Laravel returns qr_string and expires_at (snake_case)
+        const qs = paymentRes.data.qr_string;
+        const expiresAt = paymentRes.data.expires_at;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -380,12 +385,15 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-gray-900">{addr.firstName} {addr.lastName}</p>
-                                {addr.isDefault && (
+                                {/* ✅ Fixed: Laravel returns first_name last_name */}
+                                <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
+                                {/* ✅ Fixed: Laravel returns is_default */}
+                                {addr.is_default && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{addr.addressLine}</p>
+                              {/* ✅ Fixed: Laravel returns address_line */}
+                              <p className="text-sm text-gray-600 mt-1">{addr.address_line}</p>
                               <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
                               <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
                             </div>
@@ -394,18 +402,19 @@ export default function Checkout() {
                                 e.stopPropagation();
                                 setEditingAddress(addr);
                                 setAddressForm({
-                                  first_name: addr.firstName,
-                                  last_name: addr.lastName,
-                                  phone: addr.phone,
-                                  address_line: addr.addressLine,
-                                  city: addr.city,
-                                  country: addr.country,
-                                  is_default: addr.isDefault,
+                                  first_name:   addr.first_name,
+                                  last_name:    addr.last_name,
+                                  phone:        addr.phone,
+                                  address_line: addr.address_line,
+                                  city:         addr.city,
+                                  country:      addr.country,
+                                  is_default:   addr.is_default,
                                 });
                                 setShowAddressForm(true);
                               }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {!addr.isDefault && (
+                              {/* ✅ Fixed: is_default */}
+                              {!addr.is_default && (
                                 <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
                               )}
                             </div>
