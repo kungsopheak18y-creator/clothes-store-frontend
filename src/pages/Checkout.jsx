@@ -14,9 +14,10 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
-  const subtotal = getTotal();
+  // ✅ Fixed: safely parse subtotal + include delivery fee
+  const subtotal = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
-  const total = subtotal;
+  const total = subtotal + deliveryFee;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -68,7 +69,6 @@ export default function Checkout() {
       try {
         const res = await api.get('/payment/status/' + order.id);
         console.log('Poll response:', res.data);
-        // ✅ Fixed: snake_case payment_status
         const status = res.data.payment_status;
         if (status === 'PAID') {
           clearInterval(poll);
@@ -96,7 +96,6 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      // ✅ Fixed: snake_case is_default
       const defaultAddr = data.find(a => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
@@ -150,7 +149,6 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      // ✅ Fixed: snake_case payment_status
       const status = res.data.payment_status;
       if (status === 'PAID') {
         clearInterval(intervalRef.current);
@@ -177,7 +175,6 @@ export default function Checkout() {
     try {
       setPaymentStatus('waiting');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      // ✅ Fixed: snake_case qr_string + expires_at
       setQrString(paymentRes.data.qr_string);
       setQrExpiresAt(paymentRes.data.expires_at);
       toast.success('New QR generated!');
@@ -219,7 +216,6 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        // ✅ Fixed: snake_case qr_string + expires_at
         const qs        = paymentRes.data.qr_string;
         const expiresAt = paymentRes.data.expires_at;
 
@@ -277,6 +273,7 @@ export default function Checkout() {
           </div>
           <h2 className="text-2xl font-medium text-gray-900">Scan to Pay</h2>
           <p className="text-gray-500 text-sm mt-1 mb-2">Use ABA, Bakong, Wing or any KHQR app</p>
+          {/* ✅ Fixed: safe toFixed */}
           <p className="text-2xl font-bold text-gray-900 mb-6">${total.toFixed(2)} USD</p>
 
           {paymentStatus === 'expired' ? (
@@ -385,14 +382,11 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {/* ✅ Fixed: snake_case first_name / last_name */}
                                 <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
-                                {/* ✅ Fixed: snake_case is_default */}
                                 {addr.is_default && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
                                 )}
                               </div>
-                              {/* ✅ Fixed: snake_case address_line */}
                               <p className="text-sm text-gray-600 mt-1">{addr.address_line}</p>
                               <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
                               <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
