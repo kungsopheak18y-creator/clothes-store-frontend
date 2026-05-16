@@ -92,6 +92,21 @@ export default function Orders() {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
+  // ✅ Fixed: safely format date — handle null/invalid dates
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString();
+  };
+
+  // ✅ Fixed: safely format price — handle null/string/NaN
+  const formatPrice = (amount) => {
+    const num = parseFloat(amount);
+    if (isNaN(num)) return '$0.00';
+    return '$' + num.toFixed(2);
+  };
+
   if (loading) {
     return (
       <div className="bg-gray-50 min-h-screen py-10">
@@ -127,21 +142,21 @@ export default function Orders() {
               <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                   <p className="text-sm text-gray-500">Order #{order.id}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
-                  </p>
+                  {/* ✅ Fixed: use formatDate helper to avoid Invalid Date */}
+                  <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="flex gap-4 items-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(order.status)}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(order.status)}`}>
                     {order.status}
                   </span>
+                  {/* ✅ Fixed: use formatPrice helper to avoid $NaN */}
                   <span className="text-lg font-semibold text-gray-900">
-                    ${parseFloat(order.total_amount).toFixed(2)}
+                    {formatPrice(order.total_amount)}
                   </span>
                 </div>
               </div>
 
-              {/* ✅ Order Tracking Timeline */}
+              {/* Order Tracking Timeline */}
               <div className="px-6 pt-4 pb-2">
                 <button
                   onClick={() => toggleTimeline(order.id)}
@@ -156,8 +171,10 @@ export default function Orders() {
 
               <div className="p-6 pt-2">
                 <div className="space-y-4">
-                  {order.items.map((item) => {
+                  {order.items?.map((item) => {
                     const imageUrl = item.product?.images?.[0] || 'https://via.placeholder.com/80x80?text=No+Image';
+                    // ✅ Fixed: safely parse item price
+                    const itemPrice = parseFloat(item.price) || 0;
                     return (
                       <div key={item.id} className="flex gap-4 items-center bg-gray-50/40 rounded-xl p-3 hover:bg-gray-100/50 transition">
                         <img src={imageUrl} alt={item.product?.name} className="w-16 h-16 object-cover rounded-lg shadow-sm" />
@@ -169,8 +186,9 @@ export default function Orders() {
                               <p className="text-xs text-gray-400 mt-1">Qty: {item.quantity}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium text-gray-900">${(item.price * item.quantity).toFixed(2)}</p>
-                              <p className="text-xs text-gray-400">${item.price} each</p>
+                              {/* ✅ Fixed: safely calculate total */}
+                              <p className="font-medium text-gray-900">${(itemPrice * item.quantity).toFixed(2)}</p>
+                              <p className="text-xs text-gray-400">${itemPrice.toFixed(2)} each</p>
                             </div>
                           </div>
                         </div>
