@@ -8,7 +8,8 @@ import toast from 'react-hot-toast'
 export default function Wishlist() {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
-    const { toggle, fetchIds } = useWishlistStore()
+    const [removing, setRemoving] = useState(null) // ✅ track which item is being removed
+    const { remove } = useWishlistStore()
 
     useEffect(() => { fetchWishlist() }, [])
 
@@ -24,9 +25,22 @@ export default function Wishlist() {
     }
 
     const handleRemove = async (productId) => {
-        await toggle(productId)
-        setItems(prev => prev.filter(item => item.product_id !== productId))
-        toast.success('Removed from wishlist')
+        setRemoving(productId) // ✅ show loading on that item
+        try {
+            const success = await remove(productId)
+            if (success) {
+                // ✅ Remove from UI only after confirmed removed from backend
+                setItems(prev => prev.filter(item => item.product_id !== productId))
+                toast.success('Removed from wishlist')
+            } else {
+                toast.error('Failed to remove. Please try again.')
+            }
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to remove from wishlist')
+        } finally {
+            setRemoving(null)
+        }
     }
 
     if (loading) {
@@ -82,8 +96,6 @@ export default function Wishlist() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {items.map(item => {
                         const product = item.product
-                        // ✅ Laravel returns product.image (string)
-                        // ✅ product.images is a JSON string array → parse it and get first image
                         let imageUrl = 'https://via.placeholder.com/600x750?text=No+Image';
                         try {
                             const imgs = typeof product?.images === 'string'
@@ -92,17 +104,25 @@ export default function Wishlist() {
                             if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
                         } catch { }
 
+                        const isRemoving = removing === item.product_id
+
                         return (
                             <div
                                 key={item.id}
-                                className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition"
+                                className={`group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition ${isRemoving ? 'opacity-50 pointer-events-none' : ''}`}
                             >
                                 {/* Remove button */}
                                 <button
                                     onClick={() => handleRemove(item.product_id)}
-                                    className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition"
+                                    disabled={isRemoving}
+                                    className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition disabled:opacity-50"
                                 >
-                                    <Trash2 className="w-4 h-4 text-red-400" />
+                                    {isRemoving ? (
+                                        // ✅ Loading spinner while removing
+                                        <div className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Trash2 className="w-4 h-4 text-red-400" />
+                                    )}
                                 </button>
 
                                 {/* Image */}
@@ -128,7 +148,7 @@ export default function Wishlist() {
                                         ${parseFloat(product?.price).toFixed(2)}
                                     </p>
 
-                                    {/* Add to Cart shortcut */}
+                                    {/* View Product button */}
                                     <Link
                                         to={`/product/${product?.id}`}
                                         className="mt-3 w-full flex items-center justify-center gap-2 bg-gray-900 text-white text-xs font-medium py-2 rounded-full hover:bg-gray-700 transition"
