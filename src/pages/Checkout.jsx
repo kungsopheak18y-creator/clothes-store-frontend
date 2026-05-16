@@ -43,6 +43,7 @@ export default function Checkout() {
   const [manualChecking, setManualChecking] = useState(false);
   const intervalRef = useRef(null);
   const attemptsRef = useRef(0);
+  const paidRef = useRef(false);
 
   useEffect(() => {
     if (items.length === 0 && !orderPlaced && paymentStatus !== 'waiting') {
@@ -52,31 +53,39 @@ export default function Checkout() {
 
   useEffect(() => { fetchAddresses(); }, []);
 
+  // ✅ Polling — starts when order + qrString ready and status is waiting
   useEffect(() => {
-    if (!order || !qrString) return;
-    if (paymentStatus !== 'waiting') return;
+    if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
 
+    paidRef.current = false;
     attemptsRef.current = 0;
 
-    const poll = setInterval(async () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(async () => {
+      if (paidRef.current) return;
+
       attemptsRef.current += 1;
       if (attemptsRef.current > 200) {
-        clearInterval(poll);
+        clearInterval(intervalRef.current);
         setPaymentStatus('expired');
         return;
       }
+
       try {
-        const res = await api.get('/payment/status/' + order.id);
-        console.log('Poll response:', res.data);
+        const res = await api.get('/api/payment/status/' + order.id);
         const status = res.data.paymentStatus;
+        console.log('Poll #' + attemptsRef.current + ' status:', status);
+
         if (status === 'PAID') {
-          clearInterval(poll);
+          paidRef.current = true;
+          clearInterval(intervalRef.current);
           setPaymentStatus('paid');
           clearCart();
-          toast.success('Payment confirmed!');
+          toast.success('Payment confirmed! 🎉');
           setTimeout(() => navigate('/orders'), 2000);
         } else if (status === 'EXPIRED') {
-          clearInterval(poll);
+          clearInterval(intervalRef.current);
           setPaymentStatus('expired');
           toast.error('QR code expired. Please generate a new one.');
         }
@@ -85,14 +94,15 @@ export default function Checkout() {
       }
     }, 3000);
 
-    intervalRef.current = poll;
-    return () => clearInterval(poll);
-  }, [order?.id, qrString]);
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, [order?.id, qrString, paymentStatus]);
 
   const fetchAddresses = async () => {
     setLoadingAddresses(true);
     try {
-      const res = await api.get('/addresses');
+      const res = await api.get('/api/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
       const defaultAddr = data.find(a => a.isDefault);
@@ -108,9 +118,9 @@ export default function Checkout() {
   const saveAddress = async () => {
     try {
       if (editingAddress) {
-        await api.put('/addresses/' + editingAddress.id, addressForm);
+        await api.put('/api/addresses/' + editingAddress.id, addressForm);
       } else {
-        await api.post('/addresses', addressForm);
+        await api.post('/api/addresses', addressForm);
       }
       setShowAddressForm(false);
       fetchAddresses();
@@ -123,20 +133,20 @@ export default function Checkout() {
   const deleteAddress = async (id) => {
     if (addresses.length === 1) { toast.error('You need at least one address'); return; }
     if (confirm('Delete this address?')) {
-      await api.delete('/addresses/' + id);
+      await api.delete('/api/addresses/' + id);
       fetchAddresses();
     }
   };
 
   const setDefaultAddress = async (id) => {
-    await api.patch('/addresses/' + id + '/default');
+    await api.patch('/api/addresses/' + id + '/default');
     fetchAddresses();
   };
 
   const handleCancelPayment = async () => {
     try {
       clearInterval(intervalRef.current);
-      await api.delete('/payment/cancel/' + order.id);
+      await api.delete('/api/payment/cancel/' + order.id);
       toast.success('Order cancelled');
       navigate('/shop');
     } catch (err) {
@@ -147,13 +157,16 @@ export default function Checkout() {
   const handleManualCheck = async () => {
     setManualChecking(true);
     try {
-      const res = await api.get('/payment/status/' + order.id);
+      const res = await api.get('/api/payment/status/' + order.id);
       const status = res.data.paymentStatus;
+      console.log('Manual check status:', status);
+
       if (status === 'PAID') {
+        paidRef.current = true;
         clearInterval(intervalRef.current);
         setPaymentStatus('paid');
         clearCart();
-        toast.success('Payment confirmed!');
+        toast.success('Payment confirmed! 🎉');
         setTimeout(() => navigate('/orders'), 2000);
       } else if (status === 'EXPIRED') {
         clearInterval(intervalRef.current);
@@ -172,10 +185,12 @@ export default function Checkout() {
   const refreshQR = async () => {
     if (!order) return;
     try {
-      setPaymentStatus('waiting');
-      const paymentRes = await api.post('/payment/initiate/' + order.id);
+      clearInterval(intervalRef.current);
+      setPaymentStatus('idle');
+      const paymentRes = await api.post('/api/payment/initiate/' + order.id);
       setQrString(paymentRes.data.qrString);
       setQrExpiresAt(paymentRes.data.expiresAt);
+      setPaymentStatus('waiting');
       toast.success('New QR generated!');
     } catch (err) {
       toast.error('Failed to refresh QR');
@@ -203,7 +218,7 @@ export default function Checkout() {
         notes: `Contact via ${contactMethod}`,
       };
 
-      const orderRes = await api.post('/orders', orderPayload);
+      const orderRes = await api.post('/api/orders', orderPayload);
       const newOrder = orderRes.data.order;
       setOrder(newOrder);
 
@@ -214,7 +229,7 @@ export default function Checkout() {
         setTimeout(() => navigate('/orders'), 2000);
 
       } else if (paymentMethod === 'khqr') {
-        const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
+        const paymentRes = await api.post('/api/payment/initiate/' + newOrder.id);
         const qs = paymentRes.data.qrString;
         const expiresAt = paymentRes.data.expiresAt;
 
@@ -229,7 +244,7 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'card') {
         await new Promise(resolve => setTimeout(resolve, 1500));
-        await api.patch('/orders/' + newOrder.id + '/status', { status: 'paid' });
+        await api.patch('/api/orders/' + newOrder.id + '/status', { status: 'paid' });
         setOrderPlaced(true);
         clearCart();
         toast.success('Order placed! Redirecting...');
@@ -348,8 +363,8 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name: user?.first_name || user?.name?.split(' ')[0] || '',
-                      last_name: user?.last_name || user?.name?.split(' ')[1] || '',
+                      first_name: user?.firstName || user?.name?.split(' ')[0] || '',
+                      last_name: user?.lastName || user?.name?.split(' ')[1] || '',
                       phone: user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
                       is_default: addresses.length === 0,
