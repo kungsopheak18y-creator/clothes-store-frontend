@@ -16,7 +16,7 @@ export default function Checkout() {
   const { user } = useAuthStore();
   const subtotal = getTotal();
   const deliveryFee = 1.0;
-  const total = subtotal;
+  const total = subtotal + deliveryFee;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -85,20 +85,60 @@ export default function Checkout() {
 
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
-        if (status === 'PAID') {
+        // if (status === 'PAID') {
+        //   paidRef.current = true;
+        //   clearInterval(intervalRef.current);
+        //   setPaymentStatus('paid');
+        //   clearCart();
+        //   toast.success('Payment confirmed! 🎉');
+        //   setTimeout(() => navigate('/orders'), 2000);
+        // } else if (status === 'EXPIRED') {
+        //   clearInterval(intervalRef.current);
+        //   setPaymentStatus('expired');
+        //   toast.error('QR code expired. Please generate a new one.');
+        // }
+
+        const normalizedStatus = String(status).toUpperCase();
+
+        console.log(
+          'Poll #' + attemptsRef.current + ' status:',
+          normalizedStatus
+        );
+
+        if (
+          normalizedStatus === 'PAID' ||
+          normalizedStatus === 'SUCCESS' ||
+          normalizedStatus === 'COMPLETED'
+        ) {
+
           paidRef.current = true;
+
           clearInterval(intervalRef.current);
+
           setPaymentStatus('paid');
+
           clearCart();
+
           toast.success('Payment confirmed! 🎉');
+
           setTimeout(() => navigate('/orders'), 2000);
-        } else if (status === 'EXPIRED') {
+
+        } else if (normalizedStatus === 'EXPIRED') {
+
           clearInterval(intervalRef.current);
+
           setPaymentStatus('expired');
+
           toast.error('QR code expired. Please generate a new one.');
         }
+
+
       } catch (err) {
-        console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...');
+        // console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...');
+        console.error(
+          'Poll failed:',
+          err.response?.data || err.message
+        );
       }
     }, 3000);
 
@@ -173,19 +213,55 @@ export default function Checkout() {
         res.data.paymentStatus;
       console.log('Manual check status:', status);
 
-      if (status === 'PAID') {
+      // if (status === 'PAID') {
+      //   paidRef.current = true;
+      //   clearInterval(intervalRef.current);
+      //   setPaymentStatus('paid');
+      //   clearCart();
+      //   toast.success('Payment confirmed! 🎉');
+      //   setTimeout(() => navigate('/orders'), 2000);
+      // } else if (status === 'EXPIRED') {
+      //   clearInterval(intervalRef.current);
+      //   setPaymentStatus('expired');
+      //   toast.error('QR expired. Please generate a new one.');
+      // } else {
+      //   toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
+      // }
+
+      const normalizedStatus = String(status).toUpperCase();
+
+      if (
+        normalizedStatus === 'PAID' ||
+        normalizedStatus === 'SUCCESS' ||
+        normalizedStatus === 'COMPLETED'
+      ) {
+
         paidRef.current = true;
+
         clearInterval(intervalRef.current);
+
         setPaymentStatus('paid');
+
         clearCart();
+
         toast.success('Payment confirmed! 🎉');
+
         setTimeout(() => navigate('/orders'), 2000);
-      } else if (status === 'EXPIRED') {
+
+      } else if (normalizedStatus === 'EXPIRED') {
+
         clearInterval(intervalRef.current);
+
         setPaymentStatus('expired');
+
         toast.error('QR expired. Please generate a new one.');
+
       } else {
-        toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
+
+        toast(
+          'Payment not received yet. Please wait a moment.',
+          { icon: '⏳' }
+        );
       }
     } catch (err) {
       toast.error('Could not check payment status.');
