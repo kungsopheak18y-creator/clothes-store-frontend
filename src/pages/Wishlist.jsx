@@ -25,20 +25,30 @@ export default function Wishlist() {
     }
 
     const handleRemove = async (productId) => {
+        if (!productId) {
+            toast.error('Product not found')
+            return
+        }
         setRemoving(productId)
         try {
+            // ✅ Fixed: use item.product?.id (not item.product_id which is null)
             const res = await api.post('/wishlist/toggle', {
-                product_id: parseInt(productId) // ✅ force integer
+                product_id: parseInt(productId)
             })
 
+            // ✅ If toggle added it back, call again to remove
             if (res.data.wishlisted === true) {
                 await api.post('/wishlist/toggle', {
                     product_id: parseInt(productId)
                 })
             }
 
-            setItems(prev => prev.filter(item => item.product_id !== productId))
+            // ✅ Fixed: filter using item.product?.id (not item.product_id)
+            setItems(prev => prev.filter(item => item.product?.id !== productId))
+
+            // ✅ Refresh store IDs so heart icons update
             await fetchIds()
+
             toast.success('Removed from wishlist')
         } catch (err) {
             console.error('Remove error:', err)
@@ -109,7 +119,9 @@ export default function Wishlist() {
                             if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
                         } catch { }
 
-                        const isRemoving = removing === item.product_id
+                        // ✅ Fixed: use product?.id not item.product_id (which is null)
+                        const productId = product?.id
+                        const isRemoving = removing === productId
 
                         return (
                             <div
@@ -118,7 +130,7 @@ export default function Wishlist() {
                             >
                                 {/* Remove button */}
                                 <button
-                                    onClick={() => handleRemove(item.product_id)}
+                                    onClick={() => handleRemove(productId)} // ✅ Fixed: use productId
                                     disabled={isRemoving}
                                     className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition disabled:opacity-50"
                                 >
