@@ -74,7 +74,8 @@ export default function Checkout() {
 
       try {
         const res = await api.get('/payment/status/' + order.id);
-        const status = res.data.paymentStatus;
+        // const status = res.data.paymentStatus;
+        const status = res.data.payment_status;
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
         if (status === 'PAID') {
@@ -156,7 +157,8 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      const status = res.data.paymentStatus;
+      // const status = res.data.paymentStatus;
+      const status = res.data.payment_status;
       console.log('Manual check status:', status);
 
       if (status === 'PAID') {
