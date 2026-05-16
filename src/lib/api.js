@@ -27,9 +27,18 @@ const convertKeys = (obj) => {
   return obj
 }
 
-api.interceptors.response.use((response) => {
-  response.data = convertKeys(response.data)
-  return response
-})
+api.interceptors.response.use(
+  (response) => {
+    try {
+      response.data = convertKeys(response.data)
+    } catch (e) {
+      console.warn('Key conversion failed', e)
+    }
+    return response
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
 
 export default api
