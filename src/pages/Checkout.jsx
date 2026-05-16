@@ -68,7 +68,8 @@ export default function Checkout() {
       try {
         const res = await api.get('/payment/status/' + order.id);
         console.log('Poll response:', res.data);
-        const status = res.data.paymentStatus;
+        // ✅ Fixed: snake_case payment_status
+        const status = res.data.payment_status;
         if (status === 'PAID') {
           clearInterval(poll);
           setPaymentStatus('paid');
@@ -95,7 +96,8 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      const defaultAddr = data.find(a => a.isDefault);
+      // ✅ Fixed: snake_case is_default
+      const defaultAddr = data.find(a => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
     } catch (err) {
@@ -148,7 +150,8 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      const status = res.data.paymentStatus;
+      // ✅ Fixed: snake_case payment_status
+      const status = res.data.payment_status;
       if (status === 'PAID') {
         clearInterval(intervalRef.current);
         setPaymentStatus('paid');
@@ -174,8 +177,9 @@ export default function Checkout() {
     try {
       setPaymentStatus('waiting');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      setQrString(paymentRes.data.qrString);
-      setQrExpiresAt(paymentRes.data.expiresAt);
+      // ✅ Fixed: snake_case qr_string + expires_at
+      setQrString(paymentRes.data.qr_string);
+      setQrExpiresAt(paymentRes.data.expires_at);
       toast.success('New QR generated!');
     } catch (err) {
       toast.error('Failed to refresh QR');
@@ -194,10 +198,10 @@ export default function Checkout() {
     try {
       const orderPayload = {
         items: items.map(item => ({
-          product_id: item.productId,
+          product_id:         item.productId,
           product_variant_id: item.variantId,
-          quantity: item.quantity,
-          price: item.price,
+          quantity:           item.quantity,
+          price:              item.price,
         })),
         total_amount: total,
         notes: `Contact via ${contactMethod}`,
@@ -215,8 +219,9 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        const qs = paymentRes.data.qrString;
-        const expiresAt = paymentRes.data.expiresAt;
+        // ✅ Fixed: snake_case qr_string + expires_at
+        const qs        = paymentRes.data.qr_string;
+        const expiresAt = paymentRes.data.expires_at;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -348,11 +353,11 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name: user?.first_name || user?.name?.split(' ')[0] || '',
-                      last_name: user?.last_name || user?.name?.split(' ')[1] || '',
-                      phone: user?.phone || '',
+                      first_name:   user?.first_name || user?.name?.split(' ')[0] || '',
+                      last_name:    user?.last_name  || user?.name?.split(' ')[1] || '',
+                      phone:        user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
-                      is_default: addresses.length === 0,
+                      is_default:   addresses.length === 0,
                     });
                     setShowAddressForm(true);
                   }}
@@ -380,12 +385,15 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-gray-900">{addr.firstName} {addr.lastName}</p>
-                                {addr.isDefault && (
+                                {/* ✅ Fixed: snake_case first_name / last_name */}
+                                <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
+                                {/* ✅ Fixed: snake_case is_default */}
+                                {addr.is_default && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{addr.addressLine}</p>
+                              {/* ✅ Fixed: snake_case address_line */}
+                              <p className="text-sm text-gray-600 mt-1">{addr.address_line}</p>
                               <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
                               <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
                             </div>
@@ -394,18 +402,18 @@ export default function Checkout() {
                                 e.stopPropagation();
                                 setEditingAddress(addr);
                                 setAddressForm({
-                                  first_name: addr.firstName,
-                                  last_name: addr.lastName,
-                                  phone: addr.phone,
-                                  address_line: addr.addressLine,
-                                  city: addr.city,
-                                  country: addr.country,
-                                  is_default: addr.isDefault,
+                                  first_name:   addr.first_name,
+                                  last_name:    addr.last_name,
+                                  phone:        addr.phone,
+                                  address_line: addr.address_line,
+                                  city:         addr.city,
+                                  country:      addr.country,
+                                  is_default:   addr.is_default,
                                 });
                                 setShowAddressForm(true);
                               }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {!addr.isDefault && (
+                              {!addr.is_default && (
                                 <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
                               )}
                             </div>
@@ -424,11 +432,11 @@ export default function Checkout() {
                       <button onClick={() => setShowAddressForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input type="text" placeholder="First name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name} onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
-                      <input type="text" placeholder="Last name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name} onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
-                      <input type="tel" placeholder="Phone number" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
+                      <input type="text" placeholder="First name"     className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name}   onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
+                      <input type="text" placeholder="Last name"      className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name}    onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
+                      <input type="tel"  placeholder="Phone number"   className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone}        onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
                       <input type="text" placeholder="Street address" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.address_line} onChange={e => setAddressForm({ ...addressForm, address_line: e.target.value })} />
-                      <input type="text" placeholder="City" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
+                      <input type="text" placeholder="City"           className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city}         onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
                       <select className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.country} onChange={e => setAddressForm({ ...addressForm, country: e.target.value })}>
                         <option>Cambodia</option>
                         <option>Thailand</option>
@@ -500,7 +508,7 @@ export default function Checkout() {
                     <input type="text" placeholder="Card number" className="w-full border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.number} onChange={e => setCardDetails({ ...cardDetails, number: e.target.value })} />
                     <div className="flex gap-3">
                       <input type="text" placeholder="MM/YY" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.expiry} onChange={e => setCardDetails({ ...cardDetails, expiry: e.target.value })} />
-                      <input type="text" placeholder="CVV" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv} onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
+                      <input type="text" placeholder="CVV"   className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv}    onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
                     </div>
                     <p className="text-xs text-gray-500">Demo: any values work (mock payment)</p>
                   </div>
