@@ -16,7 +16,7 @@ export default function Checkout() {
   const { user } = useAuthStore();
   const subtotal = getTotal();
   const deliveryFee = 1.0;
-  const total = subtotal + deliveryFee;
+  const total = subtotal;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
