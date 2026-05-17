@@ -14,7 +14,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
-  // ✅ Fixed: safely parse + include delivery fee
+  // ✅ api.js interceptor converts snake_case → camelCase automatically
   const subtotal    = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
   const total       = subtotal + deliveryFee;
@@ -74,8 +74,8 @@ export default function Checkout() {
 
       try {
         const res = await api.get('/payment/status/' + order.id);
-        // ✅ Fixed: snake_case payment_status
-        const status = String(res.data?.payment_status || '').toUpperCase();
+        // ✅ interceptor converts payment_status → paymentStatus
+        const status = String(res.data?.paymentStatus || '').toUpperCase();
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
         if (status === 'PAID') {
@@ -104,8 +104,8 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      // ✅ Fixed: snake_case is_default
-      const defaultAddr = data.find(a => a.is_default);
+      // ✅ interceptor converts is_default → isDefault
+      const defaultAddr = data.find(a => a.isDefault);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
     } catch (err) {
@@ -158,8 +158,8 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      // ✅ Fixed: snake_case payment_status
-      const status = String(res.data?.payment_status || '').toUpperCase();
+      // ✅ interceptor converts payment_status → paymentStatus
+      const status = String(res.data?.paymentStatus || '').toUpperCase();
       console.log('Manual check status:', status);
 
       if (status === 'PAID') {
@@ -189,9 +189,9 @@ export default function Checkout() {
       clearInterval(intervalRef.current);
       setPaymentStatus('idle');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      // ✅ Fixed: snake_case qr_string + expires_at
-      setQrString(paymentRes.data.qr_string);
-      setQrExpiresAt(paymentRes.data.expires_at);
+      // ✅ interceptor converts qr_string → qrString, expires_at → expiresAt
+      setQrString(paymentRes.data.qrString);
+      setQrExpiresAt(paymentRes.data.expiresAt);
       setPaymentStatus('waiting');
       toast.success('New QR generated!');
     } catch (err) {
@@ -232,9 +232,9 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        // ✅ Fixed: snake_case qr_string + expires_at
-        const qs        = paymentRes.data.qr_string;
-        const expiresAt = paymentRes.data.expires_at;
+        // ✅ interceptor converts qr_string → qrString, expires_at → expiresAt
+        const qs        = paymentRes.data.qrString;
+        const expiresAt = paymentRes.data.expiresAt;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -366,8 +366,8 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name:   user?.first_name || user?.name?.split(' ')[0] || '',
-                      last_name:    user?.last_name  || user?.name?.split(' ')[1] || '',
+                      first_name:   user?.firstName || user?.name?.split(' ')[0] || '',
+                      last_name:    user?.lastName  || user?.name?.split(' ')[1] || '',
                       phone:        user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
                       is_default:   addresses.length === 0,
@@ -398,13 +398,13 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {/* ✅ Fixed: snake_case */}
-                                <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
-                                {addr.is_default && (
+                                {/* ✅ camelCase because interceptor auto-converts */}
+                                <p className="font-medium text-gray-900">{addr.firstName} {addr.lastName}</p>
+                                {addr.isDefault && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{addr.address_line}</p>
+                              <p className="text-sm text-gray-600 mt-1">{addr.addressLine}</p>
                               <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
                               <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
                             </div>
@@ -413,18 +413,18 @@ export default function Checkout() {
                                 e.stopPropagation();
                                 setEditingAddress(addr);
                                 setAddressForm({
-                                  first_name:   addr.first_name,
-                                  last_name:    addr.last_name,
+                                  first_name:   addr.firstName,
+                                  last_name:    addr.lastName,
                                   phone:        addr.phone,
-                                  address_line: addr.address_line,
+                                  address_line: addr.addressLine,
                                   city:         addr.city,
                                   country:      addr.country,
-                                  is_default:   addr.is_default,
+                                  is_default:   addr.isDefault,
                                 });
                                 setShowAddressForm(true);
                               }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {!addr.is_default && (
+                              {!addr.isDefault && (
                                 <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
                               )}
                             </div>
