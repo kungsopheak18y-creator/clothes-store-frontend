@@ -17,7 +17,7 @@ export default function Checkout() {
   // ✅ api.js interceptor converts snake_case → camelCase automatically
   const subtotal    = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
-  const total       = subtotal + deliveryFee;
+  const total       = subtotal;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
