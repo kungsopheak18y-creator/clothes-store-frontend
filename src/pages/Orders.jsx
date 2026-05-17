@@ -92,7 +92,7 @@ export default function Orders() {
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // ✅ Fixed: safely format date — handle null/invalid dates
+  // ✅ Fixed: safely format date
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
@@ -100,7 +100,7 @@ export default function Orders() {
     return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString();
   };
 
-  // ✅ Fixed: safely format price — handle null/string/NaN
+  // ✅ Fixed: safely format price — handles string/null/NaN
   const formatPrice = (amount) => {
     const num = parseFloat(amount);
     if (isNaN(num)) return '$0.00';
@@ -142,14 +142,14 @@ export default function Orders() {
               <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                   <p className="text-sm text-gray-500">Order #{order.id}</p>
-                  {/* ✅ Fixed: use formatDate helper to avoid Invalid Date */}
+                  {/* ✅ Fixed: use formatDate to avoid Invalid Date */}
                   <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="flex gap-4 items-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(order.status)}`}>
                     {order.status}
                   </span>
-                  {/* ✅ Fixed: use formatPrice helper to avoid $NaN */}
+                  {/* ✅ Fixed: use formatPrice to avoid $NaN */}
                   <span className="text-lg font-semibold text-gray-900">
                     {formatPrice(order.total_amount)}
                   </span>

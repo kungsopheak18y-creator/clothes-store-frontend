@@ -53,7 +53,7 @@ export default function Checkout() {
 
   useEffect(() => { fetchAddresses(); }, []);
 
-  // Polling
+  // ✅ Polling for payment status
   useEffect(() => {
     if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
 
@@ -62,10 +62,10 @@ export default function Checkout() {
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    intervalRef.current = setInterval(async () => {
+    const checkStatus = async () => {
       if (paidRef.current) return;
-
       attemptsRef.current += 1;
+
       if (attemptsRef.current > 200) {
         clearInterval(intervalRef.current);
         setPaymentStatus('expired');
@@ -74,74 +74,30 @@ export default function Checkout() {
 
       try {
         const res = await api.get('/payment/status/' + order.id);
-        // const status = res.data.paymentStatus;
-        // const status = res.data.payment_status;
-        // console.log('Poll #' + attemptsRef.current + ' status:', status);
-        console.log(res.data);
-
-        const status = res.data?.payment_status;
-
-        console.log("FULL RESPONSE:", res.data);
-        console.log("PAYMENT STATUS:", status);
-
+        // ✅ Backend returns payment_status (snake_case)
+        const status = String(res.data?.payment_status || '').toUpperCase();
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
-        // if (status === 'PAID') {
-        //   paidRef.current = true;
-        //   clearInterval(intervalRef.current);
-        //   setPaymentStatus('paid');
-        //   clearCart();
-        //   toast.success('Payment confirmed! 🎉');
-        //   setTimeout(() => navigate('/orders'), 2000);
-        // } else if (status === 'EXPIRED') {
-        //   clearInterval(intervalRef.current);
-        //   setPaymentStatus('expired');
-        //   toast.error('QR code expired. Please generate a new one.');
-        // }
-
-        const normalizedStatus = String(status).toUpperCase();
-
-        console.log(
-          'Poll #' + attemptsRef.current + ' status:',
-          normalizedStatus
-        );
-
-        if (
-          normalizedStatus === 'PAID' ||
-          normalizedStatus === 'SUCCESS' ||
-          normalizedStatus === 'COMPLETED'
-        ) {
-
+        if (status === 'PAID') {
           paidRef.current = true;
-
           clearInterval(intervalRef.current);
-
           setPaymentStatus('paid');
-
           clearCart();
-
           toast.success('Payment confirmed! 🎉');
-
           setTimeout(() => navigate('/orders'), 2000);
-
-        } else if (normalizedStatus === 'EXPIRED') {
-
+        } else if (status === 'EXPIRED') {
           clearInterval(intervalRef.current);
-
           setPaymentStatus('expired');
-
           toast.error('QR code expired. Please generate a new one.');
         }
-
-
       } catch (err) {
-        // console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...');
-        console.error(
-          'Poll failed:',
-          err.response?.data || err.message
-        );
+        console.error('Poll failed:', err.response?.data || err.message);
       }
-    }, 3000);
+    };
+
+    // ✅ Check immediately then every 3s
+    checkStatus();
+    intervalRef.current = setInterval(checkStatus, 3000);
 
     return () => clearInterval(intervalRef.current);
   }, [order?.id, qrString, paymentStatus]);
@@ -152,7 +108,8 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      const defaultAddr = data.find(a => a.isDefault);
+      // ✅ Fixed: Laravel returns is_default (snake_case)
+      const defaultAddr = data.find(a => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
     } catch (err) {
@@ -205,64 +162,22 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
-      // const status = res.data.paymentStatus;
-      // const status = res.data.payment_status;
-      console.log(res.data);
-
-      const status =
-        res.data.payment_status ||
-        res.data.paymentStatus;
+      const status = String(res.data?.payment_status || '').toUpperCase();
       console.log('Manual check status:', status);
 
-      // if (status === 'PAID') {
-      //   paidRef.current = true;
-      //   clearInterval(intervalRef.current);
-      //   setPaymentStatus('paid');
-      //   clearCart();
-      //   toast.success('Payment confirmed! 🎉');
-      //   setTimeout(() => navigate('/orders'), 2000);
-      // } else if (status === 'EXPIRED') {
-      //   clearInterval(intervalRef.current);
-      //   setPaymentStatus('expired');
-      //   toast.error('QR expired. Please generate a new one.');
-      // } else {
-      //   toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
-      // }
-
-      const normalizedStatus = String(status).toUpperCase();
-
-      if (
-        normalizedStatus === 'PAID' ||
-        normalizedStatus === 'SUCCESS' ||
-        normalizedStatus === 'COMPLETED'
-      ) {
-
+      if (status === 'PAID') {
         paidRef.current = true;
-
         clearInterval(intervalRef.current);
-
         setPaymentStatus('paid');
-
         clearCart();
-
         toast.success('Payment confirmed! 🎉');
-
         setTimeout(() => navigate('/orders'), 2000);
-
-      } else if (normalizedStatus === 'EXPIRED') {
-
+      } else if (status === 'EXPIRED') {
         clearInterval(intervalRef.current);
-
         setPaymentStatus('expired');
-
         toast.error('QR expired. Please generate a new one.');
-
       } else {
-
-        toast(
-          'Payment not received yet. Please wait a moment.',
-          { icon: '⏳' }
-        );
+        toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
       }
     } catch (err) {
       toast.error('Could not check payment status.');
@@ -277,8 +192,9 @@ export default function Checkout() {
       clearInterval(intervalRef.current);
       setPaymentStatus('idle');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      setQrString(paymentRes.data.qrString);
-      setQrExpiresAt(paymentRes.data.expiresAt);
+      // ✅ Fixed: backend returns qr_string and expires_at (snake_case)
+      setQrString(paymentRes.data.qr_string);
+      setQrExpiresAt(paymentRes.data.expires_at);
       setPaymentStatus('waiting');
       toast.success('New QR generated!');
     } catch (err) {
@@ -298,10 +214,10 @@ export default function Checkout() {
     try {
       const orderPayload = {
         items: items.map(item => ({
-          product_id: item.productId,
+          product_id:         item.productId,
           product_variant_id: item.variantId,
-          quantity: item.quantity,
-          price: item.price,
+          quantity:           item.quantity,
+          price:              item.price,
         })),
         total_amount: total,
         notes: `Contact via ${contactMethod}`,
@@ -319,8 +235,9 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        const qs = paymentRes.data.qrString;
-        const expiresAt = paymentRes.data.expiresAt;
+        // ✅ Fixed: backend returns qr_string not qrString
+        const qs        = paymentRes.data.qr_string;
+        const expiresAt = paymentRes.data.expires_at;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -452,11 +369,12 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name: user?.firstName || user?.name?.split(' ')[0] || '',
-                      last_name: user?.lastName || user?.name?.split(' ')[1] || '',
-                      phone: user?.phone || '',
+                      // ✅ Fixed: use snake_case user fields
+                      first_name:   user?.first_name || '',
+                      last_name:    user?.last_name  || '',
+                      phone:        user?.phone      || '',
                       address_line: '', city: '', country: 'Cambodia',
-                      is_default: addresses.length === 0,
+                      is_default:   addresses.length === 0,
                     });
                     setShowAddressForm(true);
                   }}
@@ -484,12 +402,13 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-gray-900">{addr.firstName} {addr.lastName}</p>
-                                {addr.isDefault && (
+                                {/* ✅ Fixed: snake_case address fields */}
+                                <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
+                                {addr.is_default && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{addr.addressLine}</p>
+                              <p className="text-sm text-gray-600 mt-1">{addr.address_line}</p>
                               <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
                               <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
                             </div>
@@ -498,18 +417,19 @@ export default function Checkout() {
                                 e.stopPropagation();
                                 setEditingAddress(addr);
                                 setAddressForm({
-                                  first_name: addr.firstName,
-                                  last_name: addr.lastName,
-                                  phone: addr.phone,
-                                  address_line: addr.addressLine,
-                                  city: addr.city,
-                                  country: addr.country,
-                                  is_default: addr.isDefault,
+                                  first_name:   addr.first_name,
+                                  last_name:    addr.last_name,
+                                  phone:        addr.phone,
+                                  address_line: addr.address_line,
+                                  city:         addr.city,
+                                  country:      addr.country,
+                                  is_default:   addr.is_default,
                                 });
                                 setShowAddressForm(true);
                               }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {!addr.isDefault && (
+                              {/* ✅ Fixed: is_default not isDefault */}
+                              {!addr.is_default && (
                                 <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
                               )}
                             </div>
@@ -528,11 +448,11 @@ export default function Checkout() {
                       <button onClick={() => setShowAddressForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input type="text" placeholder="First name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name} onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
-                      <input type="text" placeholder="Last name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name} onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
-                      <input type="tel" placeholder="Phone number" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
+                      <input type="text" placeholder="First name"     className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name}   onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
+                      <input type="text" placeholder="Last name"      className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name}    onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
+                      <input type="tel"  placeholder="Phone number"   className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone}        onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
                       <input type="text" placeholder="Street address" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.address_line} onChange={e => setAddressForm({ ...addressForm, address_line: e.target.value })} />
-                      <input type="text" placeholder="City" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
+                      <input type="text" placeholder="City"           className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city}         onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
                       <select className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.country} onChange={e => setAddressForm({ ...addressForm, country: e.target.value })}>
                         <option>Cambodia</option>
                         <option>Thailand</option>
@@ -604,7 +524,7 @@ export default function Checkout() {
                     <input type="text" placeholder="Card number" className="w-full border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.number} onChange={e => setCardDetails({ ...cardDetails, number: e.target.value })} />
                     <div className="flex gap-3">
                       <input type="text" placeholder="MM/YY" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.expiry} onChange={e => setCardDetails({ ...cardDetails, expiry: e.target.value })} />
-                      <input type="text" placeholder="CVV" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv} onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
+                      <input type="text" placeholder="CVV"   className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv}    onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
                     </div>
                     <p className="text-xs text-gray-500">Demo: any values work (mock payment)</p>
                   </div>

@@ -9,11 +9,11 @@ export default function Profile() {
   const location = useLocation();
   const { user, setUser, clearUser } = useAuthStore();
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    gender: '',
+    firstName:   '',
+    lastName:    '',
+    email:       '',
+    phone:       '',
+    gender:      '',
     dateOfBirth: '',
   });
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -24,12 +24,15 @@ export default function Profile() {
   useEffect(() => {
     if (user) {
       setForm({
-        firstName:   user.first_name || '',
-        lastName:    user.last_name  || '',
-        email:       user.email      || '',
-        phone:       user.phone      || '',
-        gender:      user.gender     || '',
-        dateOfBirth: user.date_of_birth ? new Date(user.date_of_birth).toISOString().split('T')[0] : '',
+        firstName:   user.first_name   || '',
+        lastName:    user.last_name    || '',
+        email:       user.email        || '',
+        phone:       user.phone        || '',
+        // ✅ Fixed: Laravel stores lowercase gender (male/female)
+        gender:      user.gender       || '',
+        dateOfBirth: user.date_of_birth
+          ? new Date(user.date_of_birth).toISOString().split('T')[0]
+          : '',
       });
     }
   }, [user]);
@@ -39,35 +42,35 @@ export default function Profile() {
     setMessage({ type: '', text: '' });
     setLoading(true);
     try {
-      // ✅ Fixed: correct URL + snake_case field names
       const res = await api.put('/profile', {
         first_name:    form.firstName,
         last_name:     form.lastName,
         phone:         form.phone,
+        // ✅ Fixed: send lowercase gender to match Laravel
         gender:        form.gender,
         date_of_birth: form.dateOfBirth || null,
       });
-      // ✅ Fixed: Laravel returns { user: {...} }
-      setUser(res.data.user);
+      // ✅ Fixed: Laravel returns { user: {...} } from updateProfile
+      const updatedUser = res.data.user || res.data;
+      setUser(updatedUser);
       setMessage({ type: 'success', text: 'Profile updated successfully' });
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Update failed' });
+      setMessage({ type: 'error', text: err.response?.data?.error || err.response?.data?.message || 'Update failed' });
     } finally {
       setLoading(false);
     }
   };
 
   const menuItems = [
-    { icon: User,    label: 'Profile',         path: '/profile',         active: location.pathname === '/profile' },
-    { icon: Package, label: 'My orders',        path: '/orders',          active: location.pathname === '/orders' },
-    { icon: MapPin,  label: 'Address book',     path: '/address-book',    active: location.pathname === '/address-book' },
-    { icon: Key,     label: 'Change password',  path: '/change-password', active: location.pathname === '/change-password' },
-    { icon: Gift,    label: 'Gift Card',         path: '/gift-card',       active: false, soon: true },
+    { icon: User,    label: 'Profile',        path: '/profile',         active: location.pathname === '/profile' },
+    { icon: Package, label: 'My orders',       path: '/orders',          active: location.pathname === '/orders' },
+    { icon: MapPin,  label: 'Address book',    path: '/address-book',    active: location.pathname === '/address-book' },
+    { icon: Key,     label: 'Change password', path: '/change-password', active: location.pathname === '/change-password' },
+    { icon: Gift,    label: 'Gift Card',        path: '/gift-card',       active: false, soon: true },
   ];
 
   const handleLogout = async () => {
-    // ✅ Fixed: correct logout URL
-    await api.post('/logout');
+    try { await api.post('/logout'); } catch (_) {}
     clearUser();
     navigate('/login');
   };
@@ -81,11 +84,11 @@ export default function Profile() {
           <aside className="lg:w-72 flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-24">
 
-              {/* ✅ Fixed: use snake_case for user fields */}
+              {/* ✅ Fixed: snake_case user fields */}
               <div className="p-5 border-b border-gray-100 bg-gray-50/30">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                    {user?.first_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">{user?.first_name} {user?.last_name}</p>
@@ -153,18 +156,18 @@ export default function Profile() {
             <h1 className="text-2xl font-light text-gray-900 mb-6">Profile Information</h1>
             <form onSubmit={handleSubmit} className="space-y-5">
 
-              {/* Gender */}
+              {/* Gender — ✅ Fixed: lowercase values to match Laravel */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Gender <span className="text-red-500 text-xs">(Required)</span>
+                  Gender <span className="text-red-500 text-xs">(Optional)</span>
                 </label>
                 <div className="flex gap-6">
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input
                       type="radio"
                       name="gender"
-                      value="MALE"
-                      checked={form.gender === 'MALE'}
+                      value="male"
+                      checked={form.gender === 'male'}
                       onChange={(e) => setForm({ ...form, gender: e.target.value })}
                       className="w-4 h-4"
                     />
@@ -174,8 +177,8 @@ export default function Profile() {
                     <input
                       type="radio"
                       name="gender"
-                      value="FEMALE"
-                      checked={form.gender === 'FEMALE'}
+                      value="female"
+                      checked={form.gender === 'female'}
                       onChange={(e) => setForm({ ...form, gender: e.target.value })}
                       className="w-4 h-4"
                     />
