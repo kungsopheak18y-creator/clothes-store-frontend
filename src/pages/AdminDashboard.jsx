@@ -21,11 +21,9 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0 });
   const [period, setPeriod] = useState('7days');
 
-  // Charts
   const [dailyRevenue, setDailyRevenue] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
 
-  // Low stock
   const [lowStockVariants, setLowStockVariants] = useState([]);
   const [showLowStock, setShowLowStock] = useState(false);
 
@@ -82,25 +80,23 @@ export default function AdminDashboard() {
       case '1year':   startDate.setFullYear(now.getFullYear() - 1); break;
       default:        startDate = new Date(0);
     }
-    const filtered = allOrders.filter(order => new Date(order.created_at) >= startDate);
+    const filtered = allOrders.filter(order => new Date(order.createdAt) >= startDate);
     setFilteredOrders(filtered);
 
     const revenue = filtered
       .filter(o => ['paid','shipped','delivered'].includes(o.status))
-      .reduce((sum, o) => sum + parseFloat(o.total_amount), 0);
+      .reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
     setStats(prev => ({ ...prev, orders: filtered.length, revenue }));
 
-    // Daily revenue chart
     const revenueMap = {};
     filtered
       .filter(o => ['paid','shipped','delivered'].includes(o.status))
       .forEach(o => {
-        const day = new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        revenueMap[day] = (revenueMap[day] || 0) + parseFloat(o.total_amount);
+        const day = new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        revenueMap[day] = (revenueMap[day] || 0) + parseFloat(o.totalAmount);
       });
     setDailyRevenue(Object.entries(revenueMap).map(([date, rev]) => ({ date, revenue: parseFloat(rev.toFixed(2)) })));
 
-    // Top products chart
     const productMap = {};
     filtered.forEach(o => {
       o.items?.forEach(item => {
@@ -134,8 +130,8 @@ export default function AdminDashboard() {
         name:        product.name,
         description: product.description || '',
         price:       product.price,
-        categoryId:  product.category_id,
-        brandId:     product.brand_id,
+        categoryId:  product.categoryId,
+        brandId:     product.brandId,
         variants:    product.variants,
       });
       setVariantsInput(JSON.stringify(product.variants, null, 2));
@@ -495,7 +491,7 @@ export default function AdminDashboard() {
                   {categories.map(cat => (
                     <tr key={cat.id}>
                       <td className="px-6 py-4 text-sm">{cat.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{cat.products_count ?? 0} products</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{cat.productsCount ?? 0} products</td>
                       <td className="px-6 py-4 text-right flex justify-end gap-3">
                         <button onClick={() => openCatBrandModal('category', cat)} className="text-indigo-600 hover:text-indigo-900"><Edit2 size={16} /></button>
                         <button onClick={() => deleteCatBrand('category', cat.id)} className="text-red-600 hover:text-red-900"><Trash2 size={16} /></button>
@@ -532,7 +528,7 @@ export default function AdminDashboard() {
                   {brands.map(b => (
                     <tr key={b.id}>
                       <td className="px-6 py-4 text-sm">{b.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{b.products_count ?? 0} products</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{b.productsCount ?? 0} products</td>
                       <td className="px-6 py-4 text-right flex justify-end gap-3">
                         <button onClick={() => openCatBrandModal('brand', b)} className="text-indigo-600 hover:text-indigo-900"><Edit2 size={16} /></button>
                         <button onClick={() => deleteCatBrand('brand', b.id)} className="text-red-600 hover:text-red-900"><Trash2 size={16} /></button>
@@ -559,8 +555,8 @@ export default function AdminDashboard() {
                   <div className="flex flex-wrap justify-between items-start gap-3">
                     <div>
                       <p className="text-sm text-gray-500">Order #{order.id}</p>
-                      <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
-                      <p className="text-sm mt-1">Customer: {order.user?.first_name} {order.user?.last_name} ({order.user?.phone})</p>
+                      <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
+                      <p className="text-sm mt-1">Customer: {order.user?.firstName} {order.user?.lastName} ({order.user?.phone})</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <select
@@ -575,7 +571,7 @@ export default function AdminDashboard() {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <span className="font-semibold text-lg">${parseFloat(order.total_amount).toFixed(2)}</span>
+                      <span className="font-semibold text-lg">${parseFloat(order.totalAmount).toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="text-sm text-gray-500 mt-2">
