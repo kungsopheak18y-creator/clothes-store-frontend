@@ -14,9 +14,10 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
-  const subtotal = getTotal();
+  // ✅ Fixed: safely parse + include delivery fee
+  const subtotal    = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
-  const total = subtotal;
+  const total       = subtotal + deliveryFee;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -53,16 +54,15 @@ export default function Checkout() {
 
   useEffect(() => { fetchAddresses(); }, []);
 
-  // ✅ Polling for payment status
+  // ✅ Polling
   useEffect(() => {
     if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
 
     paidRef.current = false;
     attemptsRef.current = 0;
-
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    const checkStatus = async () => {
+    intervalRef.current = setInterval(async () => {
       if (paidRef.current) return;
       attemptsRef.current += 1;
 
@@ -74,7 +74,7 @@ export default function Checkout() {
 
       try {
         const res = await api.get('/payment/status/' + order.id);
-        // ✅ Backend returns payment_status (snake_case)
+        // ✅ Fixed: snake_case payment_status
         const status = String(res.data?.payment_status || '').toUpperCase();
         console.log('Poll #' + attemptsRef.current + ' status:', status);
 
@@ -93,11 +93,7 @@ export default function Checkout() {
       } catch (err) {
         console.error('Poll failed:', err.response?.data || err.message);
       }
-    };
-
-    // ✅ Check immediately then every 3s
-    checkStatus();
-    intervalRef.current = setInterval(checkStatus, 3000);
+    }, 3000);
 
     return () => clearInterval(intervalRef.current);
   }, [order?.id, qrString, paymentStatus]);
@@ -108,7 +104,7 @@ export default function Checkout() {
       const res = await api.get('/addresses');
       const data = res.data.addresses || [];
       setAddresses(data);
-      // ✅ Fixed: Laravel returns is_default (snake_case)
+      // ✅ Fixed: snake_case is_default
       const defaultAddr = data.find(a => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (data.length > 0) setSelectedAddressId(data[0].id);
@@ -162,6 +158,7 @@ export default function Checkout() {
     setManualChecking(true);
     try {
       const res = await api.get('/payment/status/' + order.id);
+      // ✅ Fixed: snake_case payment_status
       const status = String(res.data?.payment_status || '').toUpperCase();
       console.log('Manual check status:', status);
 
@@ -192,7 +189,7 @@ export default function Checkout() {
       clearInterval(intervalRef.current);
       setPaymentStatus('idle');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      // ✅ Fixed: backend returns qr_string and expires_at (snake_case)
+      // ✅ Fixed: snake_case qr_string + expires_at
       setQrString(paymentRes.data.qr_string);
       setQrExpiresAt(paymentRes.data.expires_at);
       setPaymentStatus('waiting');
@@ -235,7 +232,7 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        // ✅ Fixed: backend returns qr_string not qrString
+        // ✅ Fixed: snake_case qr_string + expires_at
         const qs        = paymentRes.data.qr_string;
         const expiresAt = paymentRes.data.expires_at;
 
@@ -369,10 +366,9 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      // ✅ Fixed: use snake_case user fields
-                      first_name:   user?.first_name || '',
-                      last_name:    user?.last_name  || '',
-                      phone:        user?.phone      || '',
+                      first_name:   user?.first_name || user?.name?.split(' ')[0] || '',
+                      last_name:    user?.last_name  || user?.name?.split(' ')[1] || '',
+                      phone:        user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
                       is_default:   addresses.length === 0,
                     });
@@ -402,7 +398,7 @@ export default function Checkout() {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {/* ✅ Fixed: snake_case address fields */}
+                                {/* ✅ Fixed: snake_case */}
                                 <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
                                 {addr.is_default && (
                                   <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
@@ -428,7 +424,6 @@ export default function Checkout() {
                                 setShowAddressForm(true);
                               }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {/* ✅ Fixed: is_default not isDefault */}
                               {!addr.is_default && (
                                 <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
                               )}
