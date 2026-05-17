@@ -20,18 +20,16 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState('english');
 
-  // ✅ Fixed: read snake_case from Laravel response
   useEffect(() => {
     if (user) {
       setForm({
-        firstName:   user.first_name   || '',
-        lastName:    user.last_name    || '',
-        email:       user.email        || '',
-        phone:       user.phone        || '',
-        // ✅ Fixed: Laravel stores lowercase gender (male/female)
-        gender:      user.gender       || '',
-        dateOfBirth: user.date_of_birth
-          ? new Date(user.date_of_birth).toISOString().split('T')[0]
+        firstName:   user.firstName   || '',
+        lastName:    user.lastName    || '',
+        email:       user.email       || '',
+        phone:       user.phone       || '',
+        gender:      user.gender      || '',
+        dateOfBirth: user.dateOfBirth
+          ? new Date(user.dateOfBirth).toISOString().split('T')[0]
           : '',
       });
     }
@@ -46,11 +44,9 @@ export default function Profile() {
         first_name:    form.firstName,
         last_name:     form.lastName,
         phone:         form.phone,
-        // ✅ Fixed: send lowercase gender to match Laravel
         gender:        form.gender,
         date_of_birth: form.dateOfBirth || null,
       });
-      // ✅ Fixed: Laravel returns { user: {...} } from updateProfile
       const updatedUser = res.data.user || res.data;
       setUser(updatedUser);
       setMessage({ type: 'success', text: 'Profile updated successfully' });
@@ -84,14 +80,13 @@ export default function Profile() {
           <aside className="lg:w-72 flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-24">
 
-              {/* ✅ Fixed: snake_case user fields */}
               <div className="p-5 border-b border-gray-100 bg-gray-50/30">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {user?.first_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    {user?.firstName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{user?.first_name} {user?.last_name}</p>
+                    <p className="font-semibold text-gray-900">{user?.firstName} {user?.lastName}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>
                 </div>
@@ -156,7 +151,6 @@ export default function Profile() {
             <h1 className="text-2xl font-light text-gray-900 mb-6">Profile Information</h1>
             <form onSubmit={handleSubmit} className="space-y-5">
 
-              {/* Gender — ✅ Fixed: lowercase values to match Laravel */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Gender <span className="text-red-500 text-xs">(Optional)</span>
@@ -187,7 +181,6 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Name fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
@@ -209,7 +202,6 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Email (disabled) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
@@ -220,7 +212,6 @@ export default function Profile() {
                 />
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mobile number</label>
                 <input
@@ -231,7 +222,6 @@ export default function Profile() {
                 />
               </div>
 
-              {/* Date of birth */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Date of birth (DD/MM/YYYY)
