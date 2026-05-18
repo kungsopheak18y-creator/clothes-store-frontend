@@ -21,7 +21,7 @@ import ToastProvider from './components/ui/ToastProvider';
 import Wishlist from './pages/Wishlist'
 import useWishlistStore from './store/wishlistStore'
 
-// ✅ For pages that require login (cart, checkout, orders, profile, etc.)
+// For pages that require login (cart, checkout, orders, profile, etc.)
 function ProtectedLayout({ children }) {
   const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" />;
@@ -33,7 +33,7 @@ function ProtectedLayout({ children }) {
   );
 }
 
-// ✅ For pages guests can view (home, shop, product detail)
+// For pages guests can view (home, shop, product detail)
 function PublicLayout({ children }) {
   return (
     <>
@@ -44,21 +44,18 @@ function PublicLayout({ children }) {
 }
 
 function App() {
-  const { setUser, clearUser, setLoading } = useAuthStore();
+  const { setUser, clearUser } = useAuthStore();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // const res = await api.get('/api/auth/me'); this is for node.js backend api
         const res = await api.get('/me');
-        setUser(res.data);
-        // fetch wishlist IDs after login
-        const { fetchIds } = useWishlistStore.getState()
-        fetchIds()
+        const userData = res.data.user || res.data;
+        setUser(userData);
+        const { fetchIds } = useWishlistStore.getState();
+        fetchIds();
       } catch {
         clearUser();
-      } finally {
-        setLoading(false);
       }
     };
     checkAuth();
@@ -75,12 +72,12 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ✅ Public pages — guests can view */}
+        {/* Public pages — guests can view */}
         <Route path="/home" element={<PublicLayout><Home /></PublicLayout>} />
         <Route path="/shop" element={<PublicLayout><Shop /></PublicLayout>} />
         <Route path="/product/:id" element={<PublicLayout><ProductDetail /></PublicLayout>} />
 
-        {/* 🔒 Protected pages — login required */}
+        {/* Protected pages — login required */}
         <Route path="/cart" element={<ProtectedLayout><Cart /></ProtectedLayout>} />
         <Route path="/checkout" element={<ProtectedLayout><Checkout /></ProtectedLayout>} />
         <Route path="/orders" element={<ProtectedLayout><Orders /></ProtectedLayout>} />
@@ -90,7 +87,7 @@ function App() {
 
         <Route path="/wishlist" element={<ProtectedLayout><Wishlist /></ProtectedLayout>} />
 
-        {/* 🔒 Admin only */}
+        {/* Admin only */}
         <Route
           path="/admin"
           element={
