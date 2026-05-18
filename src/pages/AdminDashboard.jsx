@@ -1,16 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   Package, ShoppingBag, TrendingUp, Plus, Edit2, Trash2, X,
-  Upload, Calendar, AlertTriangle, Search, Filter, ChevronDown
+  Upload, Calendar, AlertTriangle, Search, Filter, ChevronDown, MapPin
 } from 'lucide-react';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Area, AreaChart, Cell
 } from 'recharts';
 
-// ── Custom Tooltip for Revenue Chart ─────────────────────────
 const RevenueTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -43,19 +42,17 @@ export default function AdminDashboard() {
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0 });
   const [period, setPeriod] = useState('7days');
-
   const [dailyRevenue, setDailyRevenue] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [lowStockVariants, setLowStockVariants] = useState([]);
   const [showLowStock, setShowLowStock] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // ── Product filters ───────────────────────────────────────
   const [productSearch, setProductSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterBrand, setFilterBrand] = useState('');
   const [sortBy, setSortBy] = useState('name');
 
-  // ── Modals ────────────────────────────────────────────────
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState({
@@ -75,7 +72,6 @@ export default function AdminDashboard() {
   useEffect(() => { fetchAllData(); }, []);
   useEffect(() => { if (allOrders.length) filterAndComputeStats(); }, [period, allOrders]);
 
-  // ── Filtered + sorted products ────────────────────────────
   const displayedProducts = useMemo(() => {
     let list = [...products];
     if (productSearch) list = list.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
@@ -127,7 +123,7 @@ export default function AdminDashboard() {
 
     const revenue = filtered
       .filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
-      .reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+      .reduce((sum, o) => sum + parseFloat(o.totalAmount || o.total_amount || 0), 0);
     setStats(prev => ({ ...prev, orders: filtered.length, revenue }));
 
     const revenueMap = {};
@@ -135,7 +131,7 @@ export default function AdminDashboard() {
       .filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
       .forEach(o => {
         const day = new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        revenueMap[day] = (revenueMap[day] || 0) + parseFloat(o.totalAmount);
+        revenueMap[day] = (revenueMap[day] || 0) + parseFloat(o.totalAmount || o.total_amount || 0);
       });
     setDailyRevenue(Object.entries(revenueMap).map(([date, rev]) => ({ date, revenue: parseFloat(rev.toFixed(2)) })));
 
@@ -318,7 +314,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
@@ -332,7 +328,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Stats Cards ── */}
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center justify-between group hover:shadow-md transition-shadow">
             <div>
@@ -363,9 +359,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Charts ── */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-          {/* Revenue Chart */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -399,7 +394,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Top Products Chart */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -432,7 +426,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Low Stock Alert ── */}
+        {/* Low Stock Alert */}
         {lowStockVariants.length > 0 && (
           <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 cursor-pointer" onClick={() => setShowLowStock(!showLowStock)}>
@@ -480,76 +474,51 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Tabs ── */}
+        {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
           {['products', 'categories', 'brands', 'orders'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-all ${activeTab === tab
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-                }`}>
+              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-all ${activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               {tab}
             </button>
           ))}
         </div>
 
-        {/* ── Products Tab ── */}
+        {/* Products Tab */}
         {activeTab === 'products' && (
           <div>
-            {/* Filters Row */}
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              {/* Search */}
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200"
-                />
+                <input type="text" placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200" />
               </div>
-              {/* Category Filter */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <select
-                  value={filterCategory}
-                  onChange={e => setFilterCategory(e.target.value)}
-                  className="pl-9 pr-8 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer"
-                >
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                  className="pl-9 pr-8 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer">
                   <option value="">All Categories</option>
                   {categories.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
                 </select>
               </div>
-              {/* Brand Filter */}
               <div className="relative">
-                <select
-                  value={filterBrand}
-                  onChange={e => setFilterBrand(e.target.value)}
-                  className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer"
-                >
+                <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}
+                  className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer">
                   <option value="">All Brands</option>
                   {brands.map(b => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
                 </select>
               </div>
-              {/* Sort */}
               <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value)}
-                  className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer"
-                >
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                  className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-200 appearance-none cursor-pointer">
                   <option value="name">Sort: Name</option>
                   <option value="price_asc">Sort: Price ↑</option>
                   <option value="price_desc">Sort: Price ↓</option>
                 </select>
               </div>
-              {/* Clear Filters */}
               {(productSearch || filterCategory || filterBrand) && (
-                <button
-                  onClick={() => { setProductSearch(''); setFilterCategory(''); setFilterBrand(''); }}
-                  className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 bg-white border border-gray-200 rounded-xl transition-colors"
-                >
+                <button onClick={() => { setProductSearch(''); setFilterCategory(''); setFilterBrand(''); }}
+                  className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 bg-white border border-gray-200 rounded-xl transition-colors">
                   Clear filters
                 </button>
               )}
@@ -559,11 +528,34 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
-
-            {/* Results count */}
             <p className="text-xs text-gray-400 mb-3">{displayedProducts.length} product{displayedProducts.length !== 1 ? 's' : ''} found</p>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {displayedProducts.map(p => (
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex gap-3">
+                  <img src={p.images?.[0] || 'https://via.placeholder.com/60'} alt={p.name} className="w-16 h-16 object-cover rounded-xl border border-gray-100 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                    <p className="text-sm font-bold text-gray-700 mt-0.5">${parseFloat(p.price).toFixed(2)}</p>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{p.category?.name || '—'}</span>
+                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{p.brand?.name || '—'}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={() => openProductModal(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
+                    <button onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={15} /></button>
+                  </div>
+                </div>
+              ))}
+              {displayedProducts.length === 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">No products match your filters</div>
+              )}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <table className="min-w-full divide-y divide-gray-50">
                 <thead className="bg-gray-50">
                   <tr>
@@ -583,20 +575,12 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-5 py-4 text-sm font-medium text-gray-900">{p.name}</td>
                       <td className="px-5 py-4 text-sm font-semibold text-gray-700">${parseFloat(p.price).toFixed(2)}</td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">{p.category?.name || '—'}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-medium">{p.brand?.name || '—'}</span>
-                      </td>
+                      <td className="px-5 py-4"><span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">{p.category?.name || '—'}</span></td>
+                      <td className="px-5 py-4"><span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-medium">{p.brand?.name || '—'}</span></td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openProductModal(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                            <Edit2 size={15} />
-                          </button>
-                          <button onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 size={15} />
-                          </button>
+                          <button onClick={() => openProductModal(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
+                          <button onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>
@@ -610,7 +594,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Categories Tab ── */}
+        {/* Categories Tab */}
         {activeTab === 'categories' && (
           <div>
             <div className="flex justify-end mb-4">
@@ -631,9 +615,7 @@ export default function AdminDashboard() {
                   {categories.map(cat => (
                     <tr key={cat.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-4 text-sm font-medium text-gray-900">{cat.name}</td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">{cat.productsCount ?? 0} products</span>
-                      </td>
+                      <td className="px-5 py-4"><span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">{cat.productsCount ?? 0} products</span></td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => openCatBrandModal('category', cat)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
@@ -649,7 +631,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Brands Tab ── */}
+        {/* Brands Tab */}
         {activeTab === 'brands' && (
           <div>
             <div className="flex justify-end mb-4">
@@ -670,9 +652,7 @@ export default function AdminDashboard() {
                   {brands.map(b => (
                     <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-4 text-sm font-medium text-gray-900">{b.name}</td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs bg-blue-50 text-blue-500 px-2.5 py-1 rounded-full">{b.productsCount ?? 0} products</span>
-                      </td>
+                      <td className="px-5 py-4"><span className="text-xs bg-blue-50 text-blue-500 px-2.5 py-1 rounded-full">{b.productsCount ?? 0} products</span></td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => openCatBrandModal('brand', b)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
@@ -688,29 +668,35 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Orders Tab ── */}
+        {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="space-y-3">
             {filteredOrders.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">No orders in this period.</div>
             ) : (
               filteredOrders.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div
+                  key={order.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedOrder(order)}
+                >
                   <div className="flex flex-wrap justify-between items-start gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
                         <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}>
                           {order.status}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(order.createdAt).toLocaleString()}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(order.createdAt || order.created_at).toLocaleString()}
+                      </p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {order.user?.firstName} {order.user?.lastName}
+                        {order.user?.name || `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim()}
                         {order.user?.phone && <span className="text-gray-400"> · {order.user.phone}</span>}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                       <select
                         className={`text-xs rounded-xl px-3 py-1.5 border-0 focus:ring-1 focus:ring-gray-300 font-medium cursor-pointer ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}
                         value={order.status}
@@ -723,7 +709,9 @@ export default function AdminDashboard() {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <span className="text-lg font-bold text-gray-900">${parseFloat(order.totalAmount).toFixed(2)}</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        ${parseFloat(order.totalAmount || order.total_amount || 0).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-50">
@@ -737,7 +725,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Product Modal ── */}
+        {/* Product Modal */}
         {showProductModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
@@ -789,7 +777,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Category/Brand Modal ── */}
+        {/* Category/Brand Modal */}
         {showCatBrandModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
@@ -800,19 +788,141 @@ export default function AdminDashboard() {
                 <button onClick={() => setShowCatBrandModal(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"><X size={18} /></button>
               </div>
               <div className="p-6">
-                <input
-                  type="text"
-                  placeholder="Name"
+                <input type="text" placeholder="Name"
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
-                  value={catBrandName}
-                  onChange={e => setCatBrandName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveCatBrand()}
-                  autoFocus
-                />
+                  value={catBrandName} onChange={e => setCatBrandName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveCatBrand()} autoFocus />
               </div>
               <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
                 <button onClick={() => setShowCatBrandModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
                 <button onClick={saveCatBrand} className="px-4 py-2 text-sm bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Detail Modal */}
+        {selectedOrder && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+              <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Order #{selectedOrder.id}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(selectedOrder.createdAt || selectedOrder.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusStyles[selectedOrder.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {selectedOrder.status}
+                  </span>
+                  <button onClick={() => setSelectedOrder(null)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+
+                {/* Customer Info */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">👤 Customer</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {selectedOrder.user?.name ||
+                      `${selectedOrder.user?.firstName || ''} ${selectedOrder.user?.lastName || ''}`.trim()}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-0.5">{selectedOrder.user?.email}</p>
+                  {selectedOrder.user?.phone && (
+                    <p className="text-sm text-gray-500 mt-0.5">📞 {selectedOrder.user.phone}</p>
+                  )}
+                </div>
+
+                {/* Delivery Address */}
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="w-4 h-4 text-blue-500" />
+                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Delivery Address</p>
+                  </div>
+                  {selectedOrder.user?.addresses?.length > 0 ? (() => {
+                    const addr = selectedOrder.user.addresses.find(a => a.isDefault || a.is_default)
+                              || selectedOrder.user.addresses[0];
+                    return addr ? (
+                      <div className="text-sm text-gray-700 space-y-0.5">
+                        <p className="font-semibold">{addr.firstName || addr.first_name} {addr.lastName || addr.last_name}</p>
+                        <p>📍 {addr.addressLine || addr.address_line}, {addr.city}, {addr.country}</p>
+                        <p>📞 {addr.phone}</p>
+                      </div>
+                    ) : <p className="text-sm text-gray-400">No address found</p>;
+                  })() : (
+                    <p className="text-sm text-gray-400">No address saved</p>
+                  )}
+                </div>
+
+                {/* Items */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📦 Items</p>
+                  <div className="space-y-3">
+                    {selectedOrder.items?.map(item => {
+                      let imageUrl = 'https://via.placeholder.com/60x60?text=No+Image';
+                      try {
+                        const imgs = typeof item.product?.images === 'string'
+                          ? JSON.parse(item.product.images)
+                          : item.product?.images;
+                        if (Array.isArray(imgs) && imgs.length > 0) imageUrl = imgs[0];
+                      } catch {}
+                      return (
+                        <div key={item.id} className="flex gap-3 items-center bg-gray-50 rounded-xl p-3">
+                          <img src={imageUrl} alt={item.product?.name} className="w-14 h-14 object-cover rounded-lg border border-gray-100" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{item.product?.name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{item.variant?.size} / {item.variant?.color} · Qty: {item.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">${parseFloat(item.price).toFixed(2)} each</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-600">Total</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    ${parseFloat(selectedOrder.totalAmount || selectedOrder.total_amount || 0).toFixed(2)}
+                  </p>
+                </div>
+
+                {/* Notes */}
+                {selectedOrder.notes && (
+                  <div className="bg-amber-50 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-amber-600 mb-1">📝 Notes</p>
+                    <p className="text-sm text-gray-700">{selectedOrder.notes}</p>
+                  </div>
+                )}
+
+                {/* Update Status */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Update Status</p>
+                  <select
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    value={selectedOrder.status}
+                    onChange={async e => {
+                      await handleUpdateOrderStatus(selectedOrder.id, e.target.value);
+                      setSelectedOrder(prev => ({ ...prev, status: e.target.value }));
+                    }}
+                    disabled={selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled'}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
               </div>
             </div>
           </div>
