@@ -85,7 +85,7 @@ export default function Checkout() {
           clearInterval(intervalRef.current);
           setPaymentStatus('paid');
           clearCart();
-          toast.success('Payment confirmed! 🎉');
+          toast.success('Payment confirmed!');
           setTimeout(() => navigate('/orders'), 2000);
         } else if (status === 'EXPIRED') {
           clearInterval(intervalRef.current);
@@ -176,7 +176,7 @@ export default function Checkout() {
         clearInterval(intervalRef.current);
         setPaymentStatus('paid');
         clearCart();
-        toast.success('Payment confirmed! 🎉');
+        toast.success('Payment confirmed!');
         setTimeout(() => navigate('/orders'), 2000);
       } else if (status === 'EXPIRED') {
         clearInterval(intervalRef.current);
@@ -486,7 +486,6 @@ export default function Checkout() {
                       <input type="text" placeholder="City"           className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city}         onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
                       <select className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.country} onChange={e => setAddressForm({ ...addressForm, country: e.target.value })}>
                         <option>Cambodia</option>
-                        <option>Thailand</option>
                         <option>Vietnam</option>
                       </select>
                     </div>
@@ -578,9 +577,6 @@ export default function Checkout() {
                   </button>
                   <button onClick={() => setContactMethod('telegram')} className={'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition ' + (contactMethod === 'telegram' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}>
                     <MessageCircle className="w-4 h-4" /> Telegram
-                  </button>
-                  <button onClick={() => setContactMethod('whatsapp')} className={'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition ' + (contactMethod === 'whatsapp' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}>
-                    <MessageCircle className="w-4 h-4" /> WhatsApp
                   </button>
                 </div>
               </div>

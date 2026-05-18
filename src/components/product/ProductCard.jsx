@@ -26,7 +26,7 @@ export default function ProductCard({ product }) {
       return
     }
     const added = await toggle(product.id)
-    toast.success(added ? 'Added to wishlist ❤️' : 'Removed from wishlist')
+    toast.success(added ? 'Added to wishlist' : 'Removed from wishlist')
   }
 
   return (
