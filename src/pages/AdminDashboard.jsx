@@ -9,6 +9,10 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Area, AreaChart, Cell
 } from 'recharts';
+import {
+  Package, ShoppingBag, TrendingUp, Plus, Edit2, Trash2, X,
+  Upload, Calendar, AlertTriangle, Search, Filter, ChevronDown, MapPin
+} from 'lucide-react';
 
 // ── Custom Tooltip for Revenue Chart ─────────────────────────
 const RevenueTooltip = ({ active, payload, label }) => {
@@ -72,6 +76,8 @@ export default function AdminDashboard() {
   const [editingCatBrand, setEditingCatBrand] = useState(null);
   const [catBrandName, setCatBrandName] = useState('');
 
+  const [expandedOrders, setExpandedOrders] = useState({});
+
   useEffect(() => { fetchAllData(); }, []);
   useEffect(() => { if (allOrders.length) filterAndComputeStats(); }, [period, allOrders]);
 
@@ -80,9 +86,9 @@ export default function AdminDashboard() {
     let list = [...products];
     if (productSearch) list = list.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
     if (filterCategory) list = list.filter(p => String(p.categoryId ?? p.category?.id) === filterCategory);
-    if (filterBrand)    list = list.filter(p => String(p.brandId    ?? p.brand?.id)    === filterBrand);
-    if (sortBy === 'name')       list.sort((a, b) => a.name.localeCompare(b.name));
-    if (sortBy === 'price_asc')  list.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    if (filterBrand) list = list.filter(p => String(p.brandId ?? p.brand?.id) === filterBrand);
+    if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === 'price_asc') list.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     if (sortBy === 'price_desc') list.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
     return list;
   }, [products, productSearch, filterCategory, filterBrand, sortBy]);
@@ -116,23 +122,23 @@ export default function AdminDashboard() {
     const now = new Date();
     let startDate = new Date();
     switch (period) {
-      case '7days':   startDate.setDate(now.getDate() - 7);         break;
-      case '30days':  startDate.setDate(now.getDate() - 30);        break;
-      case '3months': startDate.setMonth(now.getMonth() - 3);       break;
-      case '1year':   startDate.setFullYear(now.getFullYear() - 1); break;
-      default:        startDate = new Date(0);
+      case '7days': startDate.setDate(now.getDate() - 7); break;
+      case '30days': startDate.setDate(now.getDate() - 30); break;
+      case '3months': startDate.setMonth(now.getMonth() - 3); break;
+      case '1year': startDate.setFullYear(now.getFullYear() - 1); break;
+      default: startDate = new Date(0);
     }
     const filtered = allOrders.filter(o => new Date(o.createdAt) >= startDate);
     setFilteredOrders(filtered);
 
     const revenue = filtered
-      .filter(o => ['paid','shipped','delivered'].includes(o.status))
+      .filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
       .reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
     setStats(prev => ({ ...prev, orders: filtered.length, revenue }));
 
     const revenueMap = {};
     filtered
-      .filter(o => ['paid','shipped','delivered'].includes(o.status))
+      .filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
       .forEach(o => {
         const day = new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         revenueMap[day] = (revenueMap[day] || 0) + parseFloat(o.totalAmount);
@@ -283,9 +289,9 @@ export default function AdminDashboard() {
   };
 
   const statusStyles = {
-    pending:   'bg-amber-50 text-amber-700 border border-amber-200',
-    paid:      'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    shipped:   'bg-blue-50 text-blue-700 border border-blue-200',
+    pending: 'bg-amber-50 text-amber-700 border border-amber-200',
+    paid: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    shipped: 'bg-blue-50 text-blue-700 border border-blue-200',
     delivered: 'bg-gray-100 text-gray-600 border border-gray-200',
     cancelled: 'bg-red-50 text-red-600 border border-red-200',
   };
@@ -484,11 +490,10 @@ export default function AdminDashboard() {
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
           {['products', 'categories', 'brands', 'orders'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-all ${
-                activeTab === tab
+              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-all ${activeTab === tab
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}>
+                }`}>
               {tab}
             </button>
           ))}
@@ -696,42 +701,99 @@ export default function AdminDashboard() {
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">No orders in this period.</div>
             ) : (
               filteredOrders.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-                  <div className="flex flex-wrap justify-between items-start gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}>
-                          {order.status}
-                        </span>
+                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+
+                  {/* ── Order Header ── */}
+                  <div
+                    className="p-5 cursor-pointer"
+                    onClick={() => setExpandedOrders(prev => ({ ...prev, [order.id]: !prev[order.id] }))}
+                  >
+                    <div className="flex flex-wrap justify-between items-start gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
+                          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {order.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{new Date(order.createdAt).toLocaleString()}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {order.user?.firstName} {order.user?.lastName}
+                          {order.user?.phone && <span className="text-gray-400"> · {order.user.phone}</span>}
+                          {order.user?.email && <span className="text-gray-400"> · {order.user.email}</span>}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(order.createdAt).toLocaleString()}</p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {order.user?.firstName} {order.user?.lastName}
-                        {order.user?.phone && <span className="text-gray-400"> · {order.user.phone}</span>}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <select
-                        className={`text-xs rounded-xl px-3 py-1.5 border-0 focus:ring-1 focus:ring-gray-300 font-medium cursor-pointer ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}
-                        value={order.status}
-                        onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
-                        disabled={order.status === 'delivered' || order.status === 'cancelled'}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                      <span className="text-lg font-bold text-gray-900">${parseFloat(order.totalAmount).toFixed(2)}</span>
+                      <div className="flex items-center gap-3">
+                        <select
+                          className={`text-xs rounded-xl px-3 py-1.5 border-0 focus:ring-1 focus:ring-gray-300 font-medium cursor-pointer ${statusStyles[order.status] || 'bg-gray-100 text-gray-600'}`}
+                          value={order.status}
+                          onChange={e => { e.stopPropagation(); handleUpdateOrderStatus(order.id, e.target.value); }}
+                          onClick={e => e.stopPropagation()}
+                          disabled={order.status === 'delivered' || order.status === 'cancelled'}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                        <span className="text-lg font-bold text-gray-900">${parseFloat(order.totalAmount).toFixed(2)}</span>
+                        {expandedOrders[order.id]
+                          ? <ChevronDown className="w-4 h-4 text-gray-400 rotate-180 transition-transform" />
+                          : <ChevronDown className="w-4 h-4 text-gray-400 transition-transform" />
+                        }
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-gray-50">
-                    <p className="text-xs text-gray-400">
-                      {order.items?.map(i => `${i.product?.name} (${i.variant?.size}/${i.variant?.color}) ×${i.quantity}`).join(' · ') || 'No items'}
-                    </p>
-                  </div>
+
+                  {/* ── Expandable Order Details ── */}
+                  {expandedOrders[order.id] && (
+                    <div className="border-t border-gray-100 px-5 pb-5">
+
+                      {/* Notes */}
+                      {order.notes && (
+                        <p className="text-xs text-gray-500 mt-3 mb-2">📝 {order.notes}</p>
+                      )}
+
+                      {/* Items */}
+                      <div className="space-y-2 mt-3">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Items</p>
+                        {order.items?.map(item => (
+                          <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
+                            <img
+                              src={item.product?.images?.[0] || 'https://via.placeholder.com/48'}
+                              alt={item.product?.name}
+                              className="w-12 h-12 object-cover rounded-lg border border-gray-100"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{item.product?.name}</p>
+                              <p className="text-xs text-gray-500">{item.variant?.size} / {item.variant?.color} · Qty: {item.quantity}</p>
+                            </div>
+                            <p className="text-sm font-semibold text-gray-700">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Customer Address */}
+                      {order.address && (
+                        <div className="mt-4 bg-blue-50 rounded-xl p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className="w-4 h-4 text-blue-500" />
+                            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Delivery Address</p>
+                          </div>
+                          <p className="text-sm text-gray-800 font-medium">{order.address.firstName} {order.address.lastName}</p>
+                          <p className="text-sm text-gray-600">{order.address.addressLine}</p>
+                          <p className="text-sm text-gray-600">{order.address.city}, {order.address.country}</p>
+                          <p className="text-sm text-gray-500 mt-1">{order.address.phone}</p>
+                        </div>
+                      )}
+
+                      {/* Total */}
+                      <div className="flex justify-end mt-4 pt-3 border-t border-gray-100">
+                        <p className="text-sm font-bold text-gray-900">Total: ${parseFloat(order.totalAmount).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
