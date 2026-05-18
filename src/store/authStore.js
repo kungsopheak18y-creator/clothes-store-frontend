@@ -1,17 +1,21 @@
 import { create } from 'zustand'
 
 const useAuthStore = create((set) => ({
-  user:      null,
+  user: null,
   isLoading: true,
 
-  setUser: (user, token) => {
-    if (token) localStorage.setItem('token', token)
-    set({ user, isLoading: false })
-  },
+  setUser: (userData, token) => {
+    if (token) localStorage.setItem('token', token);
 
-  clearUser: () => {
-    localStorage.removeItem('token')
-    set({ user: null, isLoading: false })
+    // Normalize snake_case → camelCase once here
+    const user = {
+      ...userData,
+      firstName: userData.first_name ?? userData.firstName ?? '',
+      lastName: userData.last_name ?? userData.lastName ?? '',
+      dateOfBirth: userData.date_of_birth ?? userData.dateOfBirth ?? '',
+    };
+
+    set({ user, isLoading: false });
   },
 }))
 
