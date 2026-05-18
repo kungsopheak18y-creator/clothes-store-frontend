@@ -15,14 +15,19 @@ api.interceptors.request.use((config) => {
 })
 
 const snakeToCamel = (str) => str.replace(/_([a-z])/g, (_, l) => l.toUpperCase())
+
 const convertKeys = (obj) => {
+  // ✅ Fixed: added null/undefined/non-object safety checks
+  if (obj === null || obj === undefined) return obj
   if (Array.isArray(obj)) return obj.map(convertKeys)
-  if (obj !== null && typeof obj === 'object') {
+  if (typeof obj !== 'object') return obj
+  try {
     return Object.fromEntries(
       Object.entries(obj).map(([k, v]) => [snakeToCamel(k), convertKeys(v)])
     )
+  } catch (e) {
+    return obj
   }
-  return obj
 }
 
 api.interceptors.response.use(
