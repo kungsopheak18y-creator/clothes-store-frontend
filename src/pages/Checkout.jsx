@@ -14,7 +14,6 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
-  // ✅ api.js interceptor converts snake_case → camelCase automatically
   const subtotal    = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
   const total       = subtotal;
@@ -24,7 +23,6 @@ export default function Checkout() {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
-
   const [addressForm, setAddressForm] = useState({
     first_name: '', last_name: '', phone: '',
     address_line: '', city: '', country: 'Cambodia', is_default: false,
@@ -54,11 +52,11 @@ export default function Checkout() {
 
   useEffect(() => { fetchAddresses(); }, []);
 
-  // ✅ Polling
+  // ─── Polling ──────────────────────────────────────────────
   useEffect(() => {
     if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
 
-    paidRef.current = false;
+    paidRef.current  = false;
     attemptsRef.current = 0;
     if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -66,6 +64,7 @@ export default function Checkout() {
       if (paidRef.current) return;
       attemptsRef.current += 1;
 
+      // Stop after 10 minutes (200 × 3 s)
       if (attemptsRef.current > 200) {
         clearInterval(intervalRef.current);
         setPaymentStatus('expired');
@@ -74,9 +73,12 @@ export default function Checkout() {
 
       try {
         const res = await api.get('/payment/status/' + order.id);
-        // ✅ interceptor converts payment_status → paymentStatus
-        const status = String(res.data?.paymentStatus || '').toUpperCase();
-        console.log('Poll #' + attemptsRef.current + ' status:', status);
+
+        // ✅ Read BOTH possible keys so it works with or without a camelCase interceptor
+        const raw    = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
+        const status = String(raw).toUpperCase();
+
+        console.log('Poll #' + attemptsRef.current + ' →', status);
 
         if (status === 'PAID') {
           paidRef.current = true;
@@ -90,26 +92,30 @@ export default function Checkout() {
           setPaymentStatus('expired');
           toast.error('QR code expired. Please generate a new one.');
         }
+        // PENDING → keep polling silently
       } catch (err) {
-        console.error('Poll failed:', err.response?.data || err.message);
+        // ✅ Don't stop polling on network error — backend might just be waking up
+        console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...', err.message);
       }
     }, 3000);
 
     return () => clearInterval(intervalRef.current);
   }, [order?.id, qrString, paymentStatus]);
 
+  // ─── Address helpers ───────────────────────────────────────
   const fetchAddresses = async () => {
     setLoadingAddresses(true);
     try {
-      const res = await api.get('/addresses');
-      const data = res.data.addresses || [];
+      const res  = await api.get('/addresses');
+      // Support both { addresses: [...] } and plain array responses
+      const data = Array.isArray(res.data) ? res.data : (res.data.addresses ?? []);
       setAddresses(data);
-      // ✅ interceptor converts is_default → isDefault
-      const defaultAddr = data.find(a => a.isDefault);
-      if (defaultAddr) setSelectedAddressId(defaultAddr.id);
-      else if (data.length > 0) setSelectedAddressId(data[0].id);
+      // Support both camelCase (interceptor) and snake_case field names
+      const defaultAddr = data.find(a => a.is_default || a.isDefault);
+      if (defaultAddr)       setSelectedAddressId(defaultAddr.id);
+      else if (data.length)  setSelectedAddressId(data[0].id);
     } catch (err) {
-      console.error(err);
+      console.error('fetchAddresses failed:', err);
     } finally {
       setLoadingAddresses(false);
     }
@@ -143,6 +149,7 @@ export default function Checkout() {
     fetchAddresses();
   };
 
+  // ─── Payment helpers ───────────────────────────────────────
   const handleCancelPayment = async () => {
     try {
       clearInterval(intervalRef.current);
@@ -154,13 +161,15 @@ export default function Checkout() {
     }
   };
 
+  // ✅ Manual "I already paid" button — reads same multi-key status
   const handleManualCheck = async () => {
     setManualChecking(true);
     try {
-      const res = await api.get('/payment/status/' + order.id);
-      // ✅ interceptor converts payment_status → paymentStatus
-      const status = String(res.data?.paymentStatus || '').toUpperCase();
-      console.log('Manual check status:', status);
+      const res    = await api.get('/payment/status/' + order.id);
+      const raw    = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
+      const status = String(raw).toUpperCase();
+
+      console.log('Manual check →', status);
 
       if (status === 'PAID') {
         paidRef.current = true;
@@ -177,7 +186,7 @@ export default function Checkout() {
         toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
       }
     } catch (err) {
-      toast.error('Could not check payment status.');
+      toast.error('Could not check payment status. Please try again.');
     } finally {
       setManualChecking(false);
     }
@@ -189,9 +198,11 @@ export default function Checkout() {
       clearInterval(intervalRef.current);
       setPaymentStatus('idle');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
-      // ✅ interceptor converts qr_string → qrString, expires_at → expiresAt
-      setQrString(paymentRes.data.qrString);
-      setQrExpiresAt(paymentRes.data.expiresAt);
+      // ✅ Support both snake_case and camelCase (interceptor or not)
+      const qs        = paymentRes.data.qr_string   ?? paymentRes.data.qrString;
+      const expiresAt = paymentRes.data.expires_at   ?? paymentRes.data.expiresAt;
+      setQrString(qs);
+      setQrExpiresAt(expiresAt);
       setPaymentStatus('waiting');
       toast.success('New QR generated!');
     } catch (err) {
@@ -200,6 +211,7 @@ export default function Checkout() {
     }
   };
 
+  // ─── Place order ───────────────────────────────────────────
   const placeOrder = async () => {
     if (!selectedAddressId) { toast.error('Please select a delivery address'); return; }
     if (paymentMethod === 'card' && (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv)) {
@@ -221,8 +233,15 @@ export default function Checkout() {
       };
 
       const orderRes = await api.post('/orders', orderPayload);
-      const newOrder = orderRes.data.order;
+
+      // ✅ Handle both { order: {...} } and plain object responses safely
+      const newOrder = orderRes.data?.order ?? orderRes.data;
       setOrder(newOrder);
+
+      if (!newOrder?.id) {
+        toast.error('Failed to create order. Please try again.');
+        return;
+      }
 
       if (paymentMethod === 'cod') {
         setOrderPlaced(true);
@@ -232,9 +251,10 @@ export default function Checkout() {
 
       } else if (paymentMethod === 'khqr') {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
-        // ✅ interceptor converts qr_string → qrString, expires_at → expiresAt
-        const qs        = paymentRes.data.qrString;
-        const expiresAt = paymentRes.data.expiresAt;
+
+        // ✅ Support both snake_case and camelCase
+        const qs        = paymentRes.data.qr_string  ?? paymentRes.data.qrString;
+        const expiresAt = paymentRes.data.expires_at  ?? paymentRes.data.expiresAt;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -254,8 +274,10 @@ export default function Checkout() {
         setTimeout(() => navigate('/orders'), 2000);
       }
     } catch (error) {
-      console.error(error);
-      const msg = error.response?.data?.error || error.response?.data?.message || 'Order failed. Please try again.';
+      console.error('placeOrder error:', error);
+      const msg = error.response?.data?.error
+               ?? error.response?.data?.message
+               ?? 'Order failed. Please try again.';
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -348,6 +370,7 @@ export default function Checkout() {
 
   if (loadingAddresses) return <div className="py-20 text-center">Loading addresses...</div>;
 
+  // ─── MAIN CHECKOUT FORM ───────────────────────────────────
   return (
     <div className="bg-gray-50/40 min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -366,8 +389,8 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name:   user?.firstName || user?.name?.split(' ')[0] || '',
-                      last_name:    user?.lastName  || user?.name?.split(' ')[1] || '',
+                      first_name:   user?.first_name || user?.firstName || user?.name?.split(' ')[0] || '',
+                      last_name:    user?.last_name  || user?.lastName  || user?.name?.split(' ')[1] || '',
                       phone:        user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
                       is_default:   addresses.length === 0,
@@ -386,51 +409,64 @@ export default function Checkout() {
                       {addresses.length === 0 && (
                         <p className="text-sm text-gray-400 text-center py-4">No addresses yet. Add one above.</p>
                       )}
-                      {addresses.map(addr => (
-                        <div
-                          key={addr.id}
-                          onClick={() => setSelectedAddressId(addr.id)}
-                          className={'relative cursor-pointer rounded-xl p-4 transition-all duration-200 ' +
-                            (selectedAddressId === addr.id
-                              ? 'bg-gray-50 ring-2 ring-gray-200 ring-offset-1'
-                              : 'bg-white border border-gray-200 hover:border-gray-300')}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {/* ✅ camelCase because interceptor auto-converts */}
-                                <p className="font-medium text-gray-900">{addr.firstName} {addr.lastName}</p>
-                                {addr.isDefault && (
-                                  <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
+                      {addresses.map(addr => {
+                        // ✅ Support both snake_case and camelCase field names
+                        const firstName   = addr.first_name   ?? addr.firstName   ?? '';
+                        const lastName    = addr.last_name    ?? addr.lastName    ?? '';
+                        const addressLine = addr.address_line ?? addr.addressLine ?? '';
+                        const isDefault   = addr.is_default   ?? addr.isDefault   ?? false;
+
+                        return (
+                          <div
+                            key={addr.id}
+                            onClick={() => setSelectedAddressId(addr.id)}
+                            className={'relative cursor-pointer rounded-xl p-4 transition-all duration-200 ' +
+                              (selectedAddressId === addr.id
+                                ? 'bg-gray-50 ring-2 ring-gray-200 ring-offset-1'
+                                : 'bg-white border border-gray-200 hover:border-gray-300')}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium text-gray-900">{firstName} {lastName}</p>
+                                  {isDefault && (
+                                    <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Default</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{addressLine}</p>
+                                <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
+                                <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
+                              </div>
+                              <div className="flex gap-2 ml-4">
+                                <button onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAddress(addr);
+                                  setAddressForm({
+                                    first_name:   firstName,
+                                    last_name:    lastName,
+                                    phone:        addr.phone,
+                                    address_line: addressLine,
+                                    city:         addr.city,
+                                    country:      addr.country,
+                                    is_default:   isDefault,
+                                  });
+                                  setShowAddressForm(true);
+                                }} className="p-1 text-gray-400 hover:text-gray-700">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                {!isDefault && (
+                                  <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700">
+                                    <Star className="w-4 h-4" />
+                                  </button>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{addr.addressLine}</p>
-                              <p className="text-sm text-gray-600">{addr.city}, {addr.country}</p>
-                              <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
-                            </div>
-                            <div className="flex gap-2 ml-4">
-                              <button onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAddress(addr);
-                                setAddressForm({
-                                  first_name:   addr.firstName,
-                                  last_name:    addr.lastName,
-                                  phone:        addr.phone,
-                                  address_line: addr.addressLine,
-                                  city:         addr.city,
-                                  country:      addr.country,
-                                  is_default:   addr.isDefault,
-                                });
-                                setShowAddressForm(true);
-                              }} className="p-1 text-gray-400 hover:text-gray-700"><Edit2 className="w-4 h-4" /></button>
-                              <button onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                              {!addr.isDefault && (
-                                <button onClick={(e) => { e.stopPropagation(); setDefaultAddress(addr.id); }} className="p-1 text-gray-400 hover:text-gray-700"><Star className="w-4 h-4" /></button>
-                              )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
                       <Truck className="w-3 h-3" /> Delivery: ${deliveryFee} – Clothes Store Bikers (1-3 days)
@@ -475,11 +511,11 @@ export default function Checkout() {
               <div className="p-6 divide-y divide-gray-100">
                 {items.map(item => (
                   <div key={item.variantId} className="flex gap-4 py-4 first:pt-0 last:pb-0">
-                    <img src={
-                      item.image ||
-                      (Array.isArray(item.images) ? item.images[0] : null) ||
-                      'https://via.placeholder.com/800x1000?text=No+Image'
-                    } alt={item.name} className="w-20 h-20 object-cover rounded-xl bg-gray-100 shadow-sm" />
+                    <img
+                      src={item.image || (Array.isArray(item.images) ? item.images[0] : null) || 'https://via.placeholder.com/800x1000?text=No+Image'}
+                      alt={item.name}
+                      className="w-20 h-20 object-cover rounded-xl bg-gray-100 shadow-sm"
+                    />
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{item.name}</h3>
                       <p className="text-sm text-gray-500">{item.color} / {item.size}</p>
