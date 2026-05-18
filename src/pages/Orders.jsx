@@ -1,52 +1,115 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Circle, XCircle } from 'lucide-react';
+import { CheckCircle, Circle, XCircle, ChevronDown, Package, ArrowRight } from 'lucide-react';
 import api from '../lib/api';
 import { OrderSkeleton } from '../components/ui/Skeleton';
 
 const TIMELINE_STEPS = ['pending', 'paid', 'shipped', 'delivered'];
 
+const STATUS_CONFIG = {
+  pending:   { bg: '#fef9ed', text: '#92700a', dot: '#f5a623', label: 'Pending'   },
+  paid:      { bg: '#edfaf3', text: '#1a6b3c', dot: '#34c777', label: 'Paid'      },
+  shipped:   { bg: '#edf4fe', text: '#1a4a8a', dot: '#4a8ef5', label: 'Shipped'   },
+  delivered: { bg: '#f4f4f4', text: '#4a4a4a', dot: '#9a9a9a', label: 'Delivered' },
+  cancelled: { bg: '#fef0f0', text: '#8a1a1a', dot: '#e53e3e', label: 'Cancelled' },
+};
+
+function StatusBadge({ status }) {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.delivered;
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 12px',
+      borderRadius: '999px',
+      background: cfg.bg,
+      fontSize: '11px',
+      fontWeight: '600',
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color: cfg.text,
+      fontFamily: 'DM Sans, sans-serif',
+    }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+      {cfg.label}
+    </span>
+  );
+}
+
 function OrderTimeline({ status }) {
   if (status === 'cancelled') {
     return (
-      <div className="flex items-center gap-2 mt-4 px-1">
-        <XCircle className="w-5 h-5 text-red-500" />
-        <span className="text-sm font-medium text-red-500">Order Cancelled</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '20px 0 8px' }}>
+        <XCircle style={{ width: '18px', height: '18px', color: '#e53e3e' }} />
+        <span style={{ fontSize: '13px', fontWeight: '500', color: '#e53e3e', fontFamily: 'DM Sans, sans-serif' }}>
+          This order was cancelled
+        </span>
       </div>
     );
   }
 
   const currentIndex = TIMELINE_STEPS.indexOf(status);
+  const progress = currentIndex <= 0 ? 0 : (currentIndex / (TIMELINE_STEPS.length - 1)) * 100;
 
   return (
-    <div className="mt-4 px-1">
-      <div className="flex items-center justify-between relative">
-        <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0" />
-        <div
-          className="absolute top-4 left-0 h-0.5 bg-gray-900 z-0 transition-all duration-500"
-          style={{ width: currentIndex === 0 ? '0%' : `${(currentIndex / (TIMELINE_STEPS.length - 1)) * 100}%` }}
-        />
+    <div style={{ padding: '20px 0 8px' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        {/* Track background */}
+        <div style={{
+          position: 'absolute',
+          top: '14px',
+          left: '14px',
+          right: '14px',
+          height: '1px',
+          background: '#e8e8e8',
+          zIndex: 0,
+        }} />
+        {/* Track fill */}
+        <div style={{
+          position: 'absolute',
+          top: '14px',
+          left: '14px',
+          height: '1px',
+          background: '#0a0a0a',
+          width: `calc(${progress}% - ${progress > 0 ? 28 : 0}px)`,
+          zIndex: 0,
+          transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
+        }} />
+
         {TIMELINE_STEPS.map((step, index) => {
           const isDone    = index < currentIndex;
           const isCurrent = index === currentIndex;
           return (
-            <div key={step} className="flex flex-col items-center z-10 flex-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                isDone    ? 'bg-gray-900 border-gray-900' :
-                isCurrent ? 'bg-white border-gray-900' :
-                            'bg-white border-gray-300'
-              }`}>
+            <div key={step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, flex: 1 }}>
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isDone ? '#0a0a0a' : isCurrent ? '#fff' : '#fff',
+                border: isDone ? '2px solid #0a0a0a' : isCurrent ? '2px solid #0a0a0a' : '1.5px solid #d8d8d8',
+                transition: 'all 0.4s ease',
+              }}>
                 {isDone ? (
-                  <CheckCircle className="w-5 h-5 text-white" />
+                  <CheckCircle style={{ width: '16px', height: '16px', color: '#fff' }} strokeWidth={2.5} />
                 ) : isCurrent ? (
-                  <div className="w-3 h-3 bg-gray-900 rounded-full" />
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0a0a0a' }} />
                 ) : (
-                  <Circle className="w-4 h-4 text-gray-300" />
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#d8d8d8' }} />
                 )}
               </div>
-              <p className={`text-xs mt-1 capitalize font-medium ${
-                isDone || isCurrent ? 'text-gray-900' : 'text-gray-400'
-              }`}>
+              <p style={{
+                fontSize: '10px',
+                marginTop: '8px',
+                textTransform: 'capitalize',
+                letterSpacing: '0.06em',
+                fontWeight: isDone || isCurrent ? '600' : '400',
+                color: isDone || isCurrent ? '#0a0a0a' : '#b0b0b0',
+                fontFamily: 'DM Sans, sans-serif',
+              }}>
                 {step}
               </p>
             </div>
@@ -61,9 +124,17 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expandedOrder, setExpandedOrder] = useState({});
   const [expandedTimeline, setExpandedTimeline] = useState({});
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    // Load Google Fonts
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+    fetchOrders();
+  }, []);
 
   const fetchOrders = async () => {
     try {
@@ -71,140 +142,293 @@ export default function Orders() {
       setOrders(res.data.orders || []);
     } catch (err) {
       setError('Failed to load orders');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleTimeline = (orderId) => {
-    setExpandedTimeline(prev => ({ ...prev, [orderId]: !prev[orderId] }));
-  };
+  const toggleOrder    = (id) => setExpandedOrder(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleTimeline = (id) => setExpandedTimeline(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending:   'bg-yellow-100 text-yellow-800',
-      paid:      'bg-green-100 text-green-800',
-      shipped:   'bg-blue-100 text-blue-800',
-      delivered: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800',
-    };
-    return styles[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  // ✅ Fixed: safely format date
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString();
+    const d = new Date(dateStr);
+    if (isNaN(d)) return 'N/A';
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  // ✅ Fixed: safely format price — handles string/null/NaN
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
   const formatPrice = (amount) => {
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '$0.00';
-    return '$' + num.toFixed(2);
+    const n = parseFloat(amount);
+    return isNaN(n) ? '$0.00' : '$' + n.toFixed(2);
   };
 
   if (loading) {
     return (
-      <div className="bg-gray-50 min-h-screen py-10">
-        <div className="max-w-5xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-light text-gray-900 mb-8">My Orders</h1>
-          <div className="space-y-6">{[...Array(3)].map((_, i) => <OrderSkeleton key={i} />)}</div>
+      <div style={{ background: '#faf9f7', minHeight: '100vh', paddingTop: '100px', paddingBottom: '60px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ height: '40px', width: '180px', background: '#ebebeb', borderRadius: '8px', marginBottom: '40px', animation: 'pulse 1.5s infinite' }} />
+          <div className="space-y-5">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} style={{ height: '160px', background: '#fff', borderRadius: '20px', border: '1px solid #ebebeb', animation: 'pulse 1.5s infinite' }} />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error) return <div className="py-20 text-center text-red-500">{error}</div>;
+  if (error) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#e53e3e', fontFamily: 'DM Sans, sans-serif' }}>{error}</p>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
-      <div className="py-20 text-center">
-        <h2 className="text-2xl font-light text-gray-800 mb-4">No orders yet</h2>
-        <p className="text-gray-500 mb-6">Looks like you haven't placed any orders.</p>
-        <Link to="/shop" className="inline-block bg-gray-900 text-white px-6 py-2 rounded-full hover:bg-gray-800 transition">
-          Start Shopping
+      <div style={{ background: '#faf9f7', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '24px' }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: '#f0ede8',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Package style={{ width: '32px', height: '32px', color: '#8c8c8c' }} strokeWidth={1.5} />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '32px', fontWeight: '500', color: '#0a0a0a', marginBottom: '8px' }}>
+            No orders yet
+          </h2>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#8c8c8c' }}>
+            Looks like you haven't placed any orders.
+          </p>
+        </div>
+        <Link to="/shop" style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 28px',
+          background: '#0a0a0a',
+          color: '#fff',
+          borderRadius: '999px',
+          textDecoration: 'none',
+          fontSize: '13px',
+          fontWeight: '500',
+          letterSpacing: '0.06em',
+          fontFamily: 'DM Sans, sans-serif',
+          transition: 'background 0.2s ease',
+        }}>
+          Start Shopping <ArrowRight style={{ width: '14px', height: '14px' }} />
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-10">
-      <div className="max-w-5xl mx-auto px-4">
-        <h1 className="text-3xl md:text-4xl font-light text-gray-900 mb-8">My Orders</h1>
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
-              <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+    <div style={{ background: '#faf9f7', minHeight: '100vh', paddingTop: '100px', paddingBottom: '80px' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+        .order-card {
+          animation: fadeUp 0.4s ease forwards;
+          background: #fff;
+          border-radius: 20px;
+          border: 1px solid #ebebeb;
+          overflow: hidden;
+          transition: box-shadow 0.3s ease;
+        }
+        .order-card:hover { box-shadow: 0 8px 40px rgba(0,0,0,0.08); }
+        .expand-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          font-family: DM Sans, sans-serif;
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          color: #6a6a6a;
+          padding: 0;
+          transition: color 0.2s ease;
+        }
+        .expand-btn:hover { color: #0a0a0a; }
+        .item-row {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          padding: 16px 0;
+          border-bottom: 1px solid #f5f5f5;
+          transition: background 0.2s ease;
+        }
+        .item-row:last-child { border-bottom: none; }
+      `}</style>
+
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{
+            fontFamily: 'Cormorant Garamond, serif',
+            fontSize: '42px',
+            fontWeight: '500',
+            color: '#0a0a0a',
+            letterSpacing: '0.02em',
+            lineHeight: 1.1,
+            margin: 0,
+          }}>
+            My Orders
+          </h1>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#8c8c8c', marginTop: '8px' }}>
+            {orders.length} order{orders.length !== 1 ? 's' : ''} placed
+          </p>
+        </div>
+
+        {/* Orders List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {orders.map((order, idx) => (
+            <div key={order.id} className="order-card" style={{ animationDelay: `${idx * 60}ms` }}>
+
+              {/* Card Header */}
+              <div style={{
+                padding: '20px 24px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '12px',
+                borderBottom: '1px solid #f5f5f5',
+              }}>
                 <div>
-                  <p className="text-sm text-gray-500">Order #{order.id}</p>
-                  {/* ✅ Fixed: use formatDate to avoid Invalid Date */}
-                  <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', fontWeight: '600', color: '#0a0a0a', margin: 0 }}>
+                      Order #{order.id}
+                    </p>
+                    <StatusBadge status={order.status} />
+                  </div>
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#9a9a9a', marginTop: '4px' }}>
+                    {formatDate(order.createdAt || order.created_at)} · {formatTime(order.createdAt || order.created_at)}
+                  </p>
                 </div>
-                <div className="flex gap-4 items-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(order.status)}`}>
-                    {order.status}
-                  </span>
-                  {/* ✅ Fixed: use formatPrice to avoid $NaN */}
-                  <span className="text-lg font-semibold text-gray-900">
-                    {formatPrice(order.total_amount)}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '22px', fontWeight: '600', color: '#0a0a0a', margin: 0 }}>
+                    {formatPrice(order.totalAmount || order.total_amount)}
+                  </p>
                 </div>
               </div>
 
-              {/* Order Tracking Timeline */}
-              <div className="px-6 pt-4 pb-2">
-                <button
-                  onClick={() => toggleTimeline(order.id)}
-                  className="text-xs text-gray-500 hover:text-gray-800 underline"
-                >
-                  {expandedTimeline[order.id] ? 'Hide tracking ▲' : 'Track order ▼'}
+              {/* Tracking + Items */}
+              <div style={{ padding: '16px 24px 20px' }}>
+
+                {/* Timeline Toggle */}
+                <button className="expand-btn" onClick={() => toggleTimeline(order.id)} style={{ marginBottom: '4px' }}>
+                  <ChevronDown style={{
+                    width: '14px',
+                    height: '14px',
+                    transform: expandedTimeline[order.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease',
+                  }} />
+                  {expandedTimeline[order.id] ? 'Hide tracking' : 'Track order'}
                 </button>
-                {expandedTimeline[order.id] && (
-                  <OrderTimeline status={order.status} />
-                )}
-              </div>
 
-              <div className="p-6 pt-2">
-                <div className="space-y-4">
-                  {order.items?.map((item) => {
-                    const imageUrl = item.product?.images?.[0] || 'https://via.placeholder.com/80x80?text=No+Image';
-                    // ✅ Fixed: safely parse item price
-                    const itemPrice = parseFloat(item.price) || 0;
-                    return (
-                      <div key={item.id} className="flex gap-4 items-center bg-gray-50/40 rounded-xl p-3 hover:bg-gray-100/50 transition">
-                        <img src={imageUrl} alt={item.product?.name} className="w-16 h-16 object-cover rounded-lg shadow-sm" />
-                        <div className="flex-1">
-                          <div className="flex flex-col md:flex-row justify-between gap-2">
-                            <div>
-                              <h4 className="font-medium text-gray-900">{item.product?.name}</h4>
-                              <p className="text-sm text-gray-500">{item.variant?.size} / {item.variant?.color}</p>
-                              <p className="text-xs text-gray-400 mt-1">Qty: {item.quantity}</p>
+                {expandedTimeline[order.id] && <OrderTimeline status={order.status} />}
+
+                {/* Items Toggle */}
+                <div style={{ marginTop: expandedTimeline[order.id] ? '16px' : '12px' }}>
+                  <button className="expand-btn" onClick={() => toggleOrder(order.id)}>
+                    <ChevronDown style={{
+                      width: '14px',
+                      height: '14px',
+                      transform: expandedOrder[order.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }} />
+                    {expandedOrder[order.id] ? 'Hide items' : `View items (${order.items?.length || 0})`}
+                  </button>
+
+                  {expandedOrder[order.id] && (
+                    <div style={{ marginTop: '16px' }}>
+                      {order.items?.map((item) => {
+                        const imageUrl  = item.product?.images?.[0] || 'https://via.placeholder.com/80x80?text=No+Image';
+                        const itemPrice = parseFloat(item.price) || 0;
+                        return (
+                          <div key={item.id} className="item-row">
+                            <img
+                              src={imageUrl}
+                              alt={item.product?.name}
+                              style={{
+                                width: '64px',
+                                height: '64px',
+                                objectFit: 'cover',
+                                borderRadius: '12px',
+                                flexShrink: 0,
+                                background: '#f5f5f5',
+                              }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: '500', color: '#0a0a0a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.product?.name}
+                              </p>
+                              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#9a9a9a', marginTop: '3px' }}>
+                                {item.variant?.size} · {item.variant?.color} · Qty {item.quantity}
+                              </p>
                             </div>
-                            <div className="text-right">
-                              {/* ✅ Fixed: safely calculate total */}
-                              <p className="font-medium text-gray-900">${(itemPrice * item.quantity).toFixed(2)}</p>
-                              <p className="text-xs text-gray-400">${itemPrice.toFixed(2)} each</p>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: '600', color: '#0a0a0a', margin: 0 }}>
+                                ${(itemPrice * item.quantity).toFixed(2)}
+                              </p>
+                              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#b0b0b0', marginTop: '2px' }}>
+                                ${itemPrice.toFixed(2)} each
+                              </p>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className="bg-gray-50/80 px-6 py-3 border-t border-gray-100 flex justify-end">
-                <button className="text-sm font-medium text-gray-600 hover:text-gray-900 transition px-4 py-1 rounded-full border border-gray-200 hover:border-gray-400">
-                  Reorder
-                </button>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Footer CTA */}
+        <div style={{ marginTop: '48px', textAlign: 'center' }}>
+          <Link to="/shop" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 28px',
+            border: '1px solid #0a0a0a',
+            borderRadius: '999px',
+            textDecoration: 'none',
+            fontSize: '13px',
+            fontWeight: '500',
+            letterSpacing: '0.06em',
+            color: '#0a0a0a',
+            fontFamily: 'DM Sans, sans-serif',
+            transition: 'all 0.2s ease',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#0a0a0a'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0a0a0a'; }}
+          >
+            Continue Shopping <ArrowRight style={{ width: '14px', height: '14px' }} />
+          </Link>
         </div>
       </div>
     </div>
