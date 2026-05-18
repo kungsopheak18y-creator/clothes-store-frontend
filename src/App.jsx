@@ -44,18 +44,21 @@ function PublicLayout({ children }) {
 }
 
 function App() {
-  const { setUser, clearUser } = useAuthStore();
+  const { setUser, clearUser, setLoading } = useAuthStore();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // const res = await api.get('/api/auth/me'); this is for node.js backend api
         const res = await api.get('/me');
-        const userData = res.data.user || res.data;
-        setUser(userData);
-        const { fetchIds } = useWishlistStore.getState();
-        fetchIds();
+        setUser(res.data);
+        // fetch wishlist IDs after login
+        const { fetchIds } = useWishlistStore.getState()
+        fetchIds()
       } catch {
         clearUser();
+      } finally {
+        setLoading(false);
       }
     };
     checkAuth();
