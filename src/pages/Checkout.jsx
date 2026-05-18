@@ -71,32 +71,39 @@ export default function Checkout() {
       }
 
       try {
-        const res = await api.get('/payment/status/' + order.id);
+        // ✅ Call Bakong directly from browser — bypasses Railway IP block
+        const bakongRes = await fetch(
+          'https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_BAKONG_TOKEN}`,
+            },
+            body: JSON.stringify({ md5: order.md5 }),
+          }
+        );
 
-        const raw = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
-        const status = String(raw).toUpperCase();
+        const bakongData = await bakongRes.json();
+        console.log('Poll #' + attemptsRef.current, bakongData);
 
-        console.log('Poll #' + attemptsRef.current + ' status:', status);
-
-        if (status === 'PAID') {
+        if (bakongData.responseCode === 0 && bakongData.data) {
+          // ✅ Update order status in our backend
+          await api.patch('/orders/' + order.id + '/status', { status: 'paid' });
           paidRef.current = true;
           clearInterval(intervalRef.current);
           setPaymentStatus('paid');
           clearCart();
           toast.success('Payment confirmed!');
           setTimeout(() => navigate('/orders'), 2000);
-        } else if (status === 'EXPIRED') {
-          clearInterval(intervalRef.current);
-          setPaymentStatus('expired');
-          toast.error('QR code expired. Please generate a new one.');
         }
       } catch (err) {
-        console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...', err.message);
+        console.warn('Poll #' + attemptsRef.current + ' failed, retrying...', err.message);
       }
     }, 3000);
 
     return () => clearInterval(intervalRef.current);
-  }, [order?.id, qrString]); // ✅ removed paymentStatus from deps
+  }, [order?.id, qrString]);
 
   // ─── Address helpers ───────────────────────────────────────
   const fetchAddresses = async () => {
@@ -161,23 +168,30 @@ export default function Checkout() {
   const handleManualCheck = async () => {
     setManualChecking(true);
     try {
-      const res = await api.get('/payment/status/' + order.id);
-      const raw = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
-      const status = String(raw).toUpperCase();
+      // ✅ Call Bakong directly from browser
+      const bakongRes = await fetch(
+        'https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_BAKONG_TOKEN}`,
+          },
+          body: JSON.stringify({ md5: order.md5 }),
+        }
+      );
 
-      console.log('Manual check →', status);
+      const bakongData = await bakongRes.json();
+      console.log('Manual check:', bakongData);
 
-      if (status === 'PAID') {
+      if (bakongData.responseCode === 0 && bakongData.data) {
+        await api.patch('/orders/' + order.id + '/status', { status: 'paid' });
         paidRef.current = true;
         clearInterval(intervalRef.current);
         setPaymentStatus('paid');
         clearCart();
         toast.success('Payment confirmed!');
         setTimeout(() => navigate('/orders'), 2000);
-      } else if (status === 'EXPIRED') {
-        clearInterval(intervalRef.current);
-        setPaymentStatus('expired');
-        toast.error('QR expired. Please generate a new one.');
       } else {
         toast('Payment not received yet. Please wait a moment.', { icon: '⏳' });
       }
