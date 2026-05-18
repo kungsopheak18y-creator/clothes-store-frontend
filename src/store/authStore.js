@@ -4,19 +4,15 @@ const useAuthStore = create((set) => ({
   user:      null,
   isLoading: true,
 
-  setUser: (userData, token) => {
-  if (token) localStorage.setItem('token', token);
+  setUser: (user, token) => {
+    if (token) localStorage.setItem('token', token)
+    set({ user, isLoading: false })
+  },
 
-  // Normalize snake_case → camelCase once here
-  const user = {
-    ...userData,
-    firstName: userData.first_name ?? userData.firstName ?? '',
-    lastName:  userData.last_name  ?? userData.lastName  ?? '',
-    dateOfBirth: userData.date_of_birth ?? userData.dateOfBirth ?? '',
-  };
-
-  set({ user, isLoading: false });
-},
+  clearUser: () => {
+    localStorage.removeItem('token')
+    set({ user: null, isLoading: false })
+  },
 }))
 
 export default useAuthStore
