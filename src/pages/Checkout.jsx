@@ -14,9 +14,9 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
-  const subtotal    = parseFloat(getTotal()) || 0;
+  const subtotal = parseFloat(getTotal()) || 0;
   const deliveryFee = 1.0;
-  const total       = subtotal;
+  const total = subtotal;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -54,9 +54,9 @@ export default function Checkout() {
 
   // ─── Polling ──────────────────────────────────────────────
   useEffect(() => {
-    if (!order?.id || !qrString || paymentStatus !== 'waiting') return;
+    if (!order?.id || !qrString) return;
 
-    paidRef.current  = false;
+    paidRef.current = false;
     attemptsRef.current = 0;
     if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -64,7 +64,6 @@ export default function Checkout() {
       if (paidRef.current) return;
       attemptsRef.current += 1;
 
-      // Stop after 10 minutes (200 × 3 s)
       if (attemptsRef.current > 200) {
         clearInterval(intervalRef.current);
         setPaymentStatus('expired');
@@ -74,11 +73,10 @@ export default function Checkout() {
       try {
         const res = await api.get('/payment/status/' + order.id);
 
-        // ✅ Read BOTH possible keys so it works with or without a camelCase interceptor
-        const raw    = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
+        const raw = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
         const status = String(raw).toUpperCase();
 
-        console.log('Poll #' + attemptsRef.current + ' →', status);
+        console.log('Poll #' + attemptsRef.current + ' status:', status);
 
         if (status === 'PAID') {
           paidRef.current = true;
@@ -92,28 +90,26 @@ export default function Checkout() {
           setPaymentStatus('expired');
           toast.error('QR code expired. Please generate a new one.');
         }
-        // PENDING → keep polling silently
       } catch (err) {
-        // ✅ Don't stop polling on network error — backend might just be waking up
         console.warn('Poll attempt ' + attemptsRef.current + ' failed, retrying...', err.message);
       }
     }, 3000);
 
     return () => clearInterval(intervalRef.current);
-  }, [order?.id, qrString, paymentStatus]);
+  }, [order?.id, qrString]); // ✅ removed paymentStatus from deps
 
   // ─── Address helpers ───────────────────────────────────────
   const fetchAddresses = async () => {
     setLoadingAddresses(true);
     try {
-      const res  = await api.get('/addresses');
+      const res = await api.get('/addresses');
       // Support both { addresses: [...] } and plain array responses
       const data = Array.isArray(res.data) ? res.data : (res.data.addresses ?? []);
       setAddresses(data);
       // Support both camelCase (interceptor) and snake_case field names
       const defaultAddr = data.find(a => a.is_default || a.isDefault);
-      if (defaultAddr)       setSelectedAddressId(defaultAddr.id);
-      else if (data.length)  setSelectedAddressId(data[0].id);
+      if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+      else if (data.length) setSelectedAddressId(data[0].id);
     } catch (err) {
       console.error('fetchAddresses failed:', err);
     } finally {
@@ -165,8 +161,8 @@ export default function Checkout() {
   const handleManualCheck = async () => {
     setManualChecking(true);
     try {
-      const res    = await api.get('/payment/status/' + order.id);
-      const raw    = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
+      const res = await api.get('/payment/status/' + order.id);
+      const raw = res.data?.status ?? res.data?.paymentStatus ?? res.data?.payment_status ?? '';
       const status = String(raw).toUpperCase();
 
       console.log('Manual check →', status);
@@ -199,8 +195,8 @@ export default function Checkout() {
       setPaymentStatus('idle');
       const paymentRes = await api.post('/payment/initiate/' + order.id);
       // ✅ Support both snake_case and camelCase (interceptor or not)
-      const qs        = paymentRes.data.qr_string   ?? paymentRes.data.qrString;
-      const expiresAt = paymentRes.data.expires_at   ?? paymentRes.data.expiresAt;
+      const qs = paymentRes.data.qr_string ?? paymentRes.data.qrString;
+      const expiresAt = paymentRes.data.expires_at ?? paymentRes.data.expiresAt;
       setQrString(qs);
       setQrExpiresAt(expiresAt);
       setPaymentStatus('waiting');
@@ -223,10 +219,10 @@ export default function Checkout() {
     try {
       const orderPayload = {
         items: items.map(item => ({
-          product_id:         item.productId,
+          product_id: item.productId,
           product_variant_id: item.variantId,
-          quantity:           item.quantity,
-          price:              item.price,
+          quantity: item.quantity,
+          price: item.price,
         })),
         total_amount: total,
         notes: `Contact via ${contactMethod}`,
@@ -253,8 +249,8 @@ export default function Checkout() {
         const paymentRes = await api.post('/payment/initiate/' + newOrder.id);
 
         // ✅ Support both snake_case and camelCase
-        const qs        = paymentRes.data.qr_string  ?? paymentRes.data.qrString;
-        const expiresAt = paymentRes.data.expires_at  ?? paymentRes.data.expiresAt;
+        const qs = paymentRes.data.qr_string ?? paymentRes.data.qrString;
+        const expiresAt = paymentRes.data.expires_at ?? paymentRes.data.expiresAt;
 
         if (!qs) {
           toast.error('Failed to generate QR. Please try again.');
@@ -276,8 +272,8 @@ export default function Checkout() {
     } catch (error) {
       console.error('placeOrder error:', error);
       const msg = error.response?.data?.error
-               ?? error.response?.data?.message
-               ?? 'Order failed. Please try again.';
+        ?? error.response?.data?.message
+        ?? 'Order failed. Please try again.';
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -389,11 +385,11 @@ export default function Checkout() {
                   onClick={() => {
                     setEditingAddress(null);
                     setAddressForm({
-                      first_name:   user?.first_name || user?.firstName || user?.name?.split(' ')[0] || '',
-                      last_name:    user?.last_name  || user?.lastName  || user?.name?.split(' ')[1] || '',
-                      phone:        user?.phone || '',
+                      first_name: user?.first_name || user?.firstName || user?.name?.split(' ')[0] || '',
+                      last_name: user?.last_name || user?.lastName || user?.name?.split(' ')[1] || '',
+                      phone: user?.phone || '',
                       address_line: '', city: '', country: 'Cambodia',
-                      is_default:   addresses.length === 0,
+                      is_default: addresses.length === 0,
                     });
                     setShowAddressForm(true);
                   }}
@@ -411,10 +407,10 @@ export default function Checkout() {
                       )}
                       {addresses.map(addr => {
                         // ✅ Support both snake_case and camelCase field names
-                        const firstName   = addr.first_name   ?? addr.firstName   ?? '';
-                        const lastName    = addr.last_name    ?? addr.lastName    ?? '';
+                        const firstName = addr.first_name ?? addr.firstName ?? '';
+                        const lastName = addr.last_name ?? addr.lastName ?? '';
                         const addressLine = addr.address_line ?? addr.addressLine ?? '';
-                        const isDefault   = addr.is_default   ?? addr.isDefault   ?? false;
+                        const isDefault = addr.is_default ?? addr.isDefault ?? false;
 
                         return (
                           <div
@@ -442,13 +438,13 @@ export default function Checkout() {
                                   e.stopPropagation();
                                   setEditingAddress(addr);
                                   setAddressForm({
-                                    first_name:   firstName,
-                                    last_name:    lastName,
-                                    phone:        addr.phone,
+                                    first_name: firstName,
+                                    last_name: lastName,
+                                    phone: addr.phone,
                                     address_line: addressLine,
-                                    city:         addr.city,
-                                    country:      addr.country,
-                                    is_default:   isDefault,
+                                    city: addr.city,
+                                    country: addr.country,
+                                    is_default: isDefault,
                                   });
                                   setShowAddressForm(true);
                                 }} className="p-1 text-gray-400 hover:text-gray-700">
@@ -479,11 +475,11 @@ export default function Checkout() {
                       <button onClick={() => setShowAddressForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input type="text" placeholder="First name"     className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name}   onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
-                      <input type="text" placeholder="Last name"      className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name}    onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
-                      <input type="tel"  placeholder="Phone number"   className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone}        onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
+                      <input type="text" placeholder="First name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.first_name} onChange={e => setAddressForm({ ...addressForm, first_name: e.target.value })} />
+                      <input type="text" placeholder="Last name" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.last_name} onChange={e => setAddressForm({ ...addressForm, last_name: e.target.value })} />
+                      <input type="tel" placeholder="Phone number" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.phone} onChange={e => setAddressForm({ ...addressForm, phone: e.target.value })} />
                       <input type="text" placeholder="Street address" className="border border-gray-200 rounded-lg px-4 py-2 md:col-span-2" value={addressForm.address_line} onChange={e => setAddressForm({ ...addressForm, address_line: e.target.value })} />
-                      <input type="text" placeholder="City"           className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city}         onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
+                      <input type="text" placeholder="City" className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.city} onChange={e => setAddressForm({ ...addressForm, city: e.target.value })} />
                       <select className="border border-gray-200 rounded-lg px-4 py-2" value={addressForm.country} onChange={e => setAddressForm({ ...addressForm, country: e.target.value })}>
                         <option>Cambodia</option>
                         <option>Vietnam</option>
@@ -554,7 +550,7 @@ export default function Checkout() {
                     <input type="text" placeholder="Card number" className="w-full border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.number} onChange={e => setCardDetails({ ...cardDetails, number: e.target.value })} />
                     <div className="flex gap-3">
                       <input type="text" placeholder="MM/YY" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.expiry} onChange={e => setCardDetails({ ...cardDetails, expiry: e.target.value })} />
-                      <input type="text" placeholder="CVV"   className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv}    onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
+                      <input type="text" placeholder="CVV" className="w-1/2 border border-gray-200 rounded-lg px-4 py-2" value={cardDetails.cvv} onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })} />
                     </div>
                     <p className="text-xs text-gray-500">Demo: any values work (mock payment)</p>
                   </div>
