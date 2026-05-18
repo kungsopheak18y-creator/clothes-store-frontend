@@ -91,7 +91,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const [productsRes, categoriesRes, brandsRes, ordersRes, lowStockRes] = await Promise.all([
-        api.get('/products'),
+        api.get('/products?per_page=100'),
         api.get('/categories'),
         api.get('/brands'),
         api.get('/admin/orders'),

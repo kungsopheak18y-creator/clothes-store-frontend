@@ -12,7 +12,7 @@ export default function Home() {
   const [brands, setBrands] = useState([]);
 
   useEffect(() => {
-    Promise.all([api.get('/products'), api.get('/brands')])
+    Promise.all([api.get('/products?per_page=100'), api.get('/brands')])
       .then(([productsRes, brandsRes]) => {
         setFeatured(productsRes.data.products?.data || []);
         setBrands(brandsRes.data.brands || []);
