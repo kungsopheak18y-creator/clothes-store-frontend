@@ -186,8 +186,8 @@ export default function Profile() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
                   <input
                     type="text"
-                    value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    value={form.first_name}
+                    onChange={(e) => setForm({ ...form, first_name: e.target.value })}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-gray-800 focus:border-transparent"
                   />
                 </div>
@@ -195,8 +195,8 @@ export default function Profile() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
                   <input
                     type="text"
-                    value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    value={form.last_name}
+                    onChange={(e) => setForm({ ...form, last_name: e.target.value })}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-gray-800 focus:border-transparent"
                   />
                 </div>
@@ -228,7 +228,7 @@ export default function Profile() {
                 </label>
                 <input
                   type="date"
-                  value={form.dateOfBirth}
+                  value={form.date_of_birth}
                   onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-gray-800 focus:border-transparent"
                 />
