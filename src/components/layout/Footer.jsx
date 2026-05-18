@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="container-premium py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Men's Store</h3>
+            <h3 className="text-white text-lg font-semibold mb-4">Clothes Store</h3>
             <p className="text-sm">Premium apparel for the modern man.</p>
           </div>
           <div>
@@ -49,7 +49,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="border-t border-brand-800 mt-8 pt-8 text-center text-xs">
-          &copy; {new Date().getFullYear()} Men's Store. All rights reserved.
+          &copy; {new Date().getFullYear()} Clothes Store. All rights reserved.
         </div>
       </div>
     </footer>
