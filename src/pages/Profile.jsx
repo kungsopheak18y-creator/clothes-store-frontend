@@ -229,7 +229,7 @@ export default function Profile() {
                 <input
                   type="date"
                   value={form.date_of_birth}
-                  onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                  onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-gray-800 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-400 mt-1">
