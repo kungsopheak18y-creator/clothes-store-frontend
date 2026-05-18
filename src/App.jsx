@@ -18,8 +18,9 @@ import Profile from './pages/Profile';
 import AddressBook from './pages/AddressBook';
 import ChangePassword from './pages/ChnagePassword';
 import ToastProvider from './components/ui/ToastProvider';
-import Wishlist from './pages/Wishlist'
-import useWishlistStore from './store/wishlistStore'
+import Wishlist from './pages/Wishlist';
+import useWishlistStore from './store/wishlistStore';
+import GoogleCallback from './pages/GoogleCallback';
 
 // For pages that require login (cart, checkout, orders, profile, etc.)
 function ProtectedLayout({ children }) {
@@ -89,6 +90,8 @@ function App() {
         <Route path="/change-password" element={<ProtectedLayout><ChangePassword /></ProtectedLayout>} />
 
         <Route path="/wishlist" element={<ProtectedLayout><Wishlist /></ProtectedLayout>} />
+
+        <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
         {/* Admin only */}
         <Route

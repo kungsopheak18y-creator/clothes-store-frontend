@@ -27,8 +27,8 @@ export default function Register() {
         email: form.email,
         phone: form.phone,
         password: form.password,
-        confirm_password: form.confirmPassword,  // ✅ matches backend field name
-        password_confirmation: form.confirmPassword, // ✅ needed for 'confirmed' rule
+        confirm_password: form.confirmPassword,
+        password_confirmation: form.confirmPassword,
       });
       toast.success('Account created! Please login.');
       navigate('/login');
@@ -37,6 +37,10 @@ export default function Register() {
       setError(msg);
       toast.error(msg);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/redirect`;
   };
 
   return (
@@ -52,6 +56,23 @@ export default function Register() {
           <input name="confirmPassword" type="password" placeholder="Confirm Password" className="w-full border p-2 mb-4 rounded" onChange={handleChange} required />
           <button className="w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700">Register</button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        {/* Google Button */}
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-full py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+        >
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" />
+          Continue with Google
+        </button>
+
         {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
         <p className="text-center text-sm mt-4">Already have an account? <Link to="/login" className="text-blue-600">Login</Link></p>
       </div>
